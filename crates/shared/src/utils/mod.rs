@@ -38,6 +38,7 @@ impl Default for MockStorageProvider {
 }
 
 impl MockStorageProvider {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             mapping_files: Arc::new(Mutex::new(HashMap::new())),
@@ -45,6 +46,7 @@ impl MockStorageProvider {
         }
     }
 
+    #[must_use]
     pub fn with_data(
         mapping_files: HashMap<String, String>,
         files: HashMap<String, String>,
@@ -75,11 +77,11 @@ impl StorageProvider for MockStorageProvider {
 
     async fn generate_mapping_file(&self, sha256: &str, file_name: &str) -> Result<String> {
         // Store the mapping of SHA256 to filename
-        let mapping_path = format!("mapping/{}", sha256);
+        let mapping_path = format!("mapping/{sha256}");
         self.add_mapping_file(sha256, file_name);
 
         // Also store the mapping file content in our mock storage
-        let mapping_content = format!("{}:{}", sha256, file_name);
+        let mapping_content = format!("{sha256}:{file_name}");
         self.add_file(&mapping_path, &mapping_content);
 
         Ok(mapping_path)
@@ -103,8 +105,7 @@ impl StorageProvider for MockStorageProvider {
     ) -> Result<String> {
         // For a mock, we can return a fake signed URL
         Ok(format!(
-            "https://mock-storage.example.com/upload/{}",
-            object_path
+            "https://mock-storage.example.com/upload/{object_path}"
         ))
     }
 }
@@ -119,7 +120,7 @@ mod tests {
         provider.add_mapping_file("sha256", "file.txt");
         provider.add_file("file.txt", "content");
         let map_file_link = provider.resolve_mapping_for_sha("sha256").await.unwrap();
-        println!("map_file_link: {}", map_file_link);
+        println!("map_file_link: {map_file_link}");
         assert_eq!(map_file_link, "file.txt");
 
         assert_eq!(

@@ -26,16 +26,13 @@ pub async fn handle_file_upload(
     info!("Task ID: {}, Storage path: {}", task_id, storage_path);
 
     // Get orchestrator endpoint
-    let endpoint = match state.get_heartbeat_endpoint().await {
-        Some(ep) => {
-            let clean_ep = ep.replace("/heartbeat", "");
-            info!("Using orchestrator endpoint: {}", clean_ep);
-            clean_ep
-        }
-        None => {
-            error!("Orchestrator endpoint is not set - cannot upload file.");
-            return Err(anyhow::anyhow!("Orchestrator endpoint not set"));
-        }
+    let endpoint = if let Some(ep) = state.get_heartbeat_endpoint().await {
+        let clean_ep = ep.replace("/heartbeat", "");
+        info!("Using orchestrator endpoint: {}", clean_ep);
+        clean_ep
+    } else {
+        error!("Orchestrator endpoint is not set - cannot upload file.");
+        return Err(anyhow::anyhow!("Orchestrator endpoint not set"));
     };
 
     // Clean filename by removing /data prefix if present
@@ -43,10 +40,7 @@ pub async fn handle_file_upload(
     info!("Clean file name: {}", clean_file_name);
 
     // Construct file path
-    let file = format!(
-        "{}/prime-task-{}/{}",
-        storage_path, task_id, clean_file_name
-    );
+    let file = format!("{storage_path}/prime-task-{task_id}/{clean_file_name}");
     info!("Full file path: {}", file);
 
     // Get file size
@@ -165,7 +159,7 @@ pub async fn handle_file_upload(
         }
 
         // Create upload URL
-        let upload_url = format!("{}/storage/request-upload", endpoint);
+        let upload_url = format!("{endpoint}/storage/request-upload");
         debug!("Requesting signed URL from: {}", upload_url);
 
         // Send request
@@ -220,14 +214,13 @@ pub async fn handle_file_upload(
         }
     }
 
-    let signed_url = match signed_url {
-        Some(url) => url,
-        None => {
-            error!("Failed to get signed URL after {} attempts", MAX_RETRIES);
-            return Err(last_error.unwrap_or_else(|| {
-                anyhow::anyhow!("Failed to get signed URL after {} attempts", MAX_RETRIES)
-            }));
-        }
+    let signed_url = if let Some(url) = signed_url {
+        url
+    } else {
+        error!("Failed to get signed URL after {} attempts", MAX_RETRIES);
+        return Err(last_error.unwrap_or_else(|| {
+            anyhow::anyhow!("Failed to get signed URL after {} attempts", MAX_RETRIES)
+        }));
     };
 
     // Retry loop for uploading file to S3
@@ -351,7 +344,7 @@ pub async fn handle_file_validation(
         .build_work_submission_call(
             pool_id_u256,
             node_addr,
-            decoded_sha.to_vec(),
+            decoded_sha.clone(),
             U256::from(work_units),
         )
         .await

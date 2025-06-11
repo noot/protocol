@@ -94,7 +94,7 @@ impl PrimeNetworkContract<WalletProvider> {
                     node_address.into(),
                     "ipfs://nodekey/".to_string().into(),
                     compute_units.into(),
-                    DynSolValue::Bytes(signature.to_vec()),
+                    DynSolValue::Bytes(signature.clone()),
                 ],
             )?
             .send()
@@ -222,7 +222,7 @@ impl PrimeNetworkContract<WalletProvider> {
             .provider()
             .get_transaction_receipt(whitelist_provider_tx)
             .await?;
-        println!("Receipt: {:?}", receipt);
+        println!("Receipt: {receipt:?}");
 
         Ok(whitelist_provider_tx)
     }

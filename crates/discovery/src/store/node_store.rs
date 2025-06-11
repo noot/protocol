@@ -17,7 +17,7 @@ impl NodeStore {
     }
 
     pub fn get_node(&self, address: String) -> Result<Option<DiscoveryNode>, Error> {
-        let key = format!("node:{}", address);
+        let key = format!("node:{address}");
         let mut con = self.get_connection()?;
         let node: Option<String> = con.get(&key)?;
         let node = match node {
@@ -42,7 +42,7 @@ impl NodeStore {
 
     pub fn register_node(&self, node: Node) -> Result<(), Error> {
         let address = node.id.clone();
-        let key = format!("node:{}", address);
+        let key = format!("node:{address}");
 
         let mut con = self.get_connection()?;
 
@@ -63,7 +63,7 @@ impl NodeStore {
     pub fn update_node(&self, node: DiscoveryNode) -> Result<(), Error> {
         let mut con = self.get_connection()?;
         let address = node.id.clone();
-        let key = format!("node:{}", address);
+        let key = format!("node:{address}");
         let serialized_node = serde_json::to_string(&node)?;
         let _: () = con.set(&key, serialized_node)?;
         Ok(())
@@ -88,7 +88,7 @@ impl NodeStore {
 
     pub fn get_node_by_id(&self, node_id: &str) -> Result<Option<DiscoveryNode>, Error> {
         let mut con = self.get_connection()?;
-        let key = format!("node:{}", node_id);
+        let key = format!("node:{node_id}");
 
         let serialized_node: Option<String> = con.get(&key)?;
 

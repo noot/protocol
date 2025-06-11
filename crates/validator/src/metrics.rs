@@ -75,6 +75,7 @@ pub struct MetricsContext {
 }
 
 impl MetricsContext {
+    #[must_use]
     pub fn new(validator_id: String, pool_id: Option<String>) -> Self {
         Self {
             validator_id,

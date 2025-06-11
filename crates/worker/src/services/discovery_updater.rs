@@ -44,8 +44,8 @@ impl DiscoveryUpdater {
 
             // Initial delay before first update
             tokio::select! {
-                _ = sleep(INITIAL_UPDATE_DELAY) => {},
-                _ = cancellation_token.cancelled() => {
+                () = sleep(INITIAL_UPDATE_DELAY) => {},
+                () = cancellation_token.cancelled() => {
                     is_running.store(false, Ordering::SeqCst);
                     return;
                 }
@@ -65,8 +65,8 @@ impl DiscoveryUpdater {
 
                 // Sleep before next check, but check for cancellation
                 tokio::select! {
-                    _ = sleep(UPDATE_INTERVAL) => {},
-                    _ = cancellation_token.cancelled() => {
+                    () = sleep(UPDATE_INTERVAL) => {},
+                    () = cancellation_token.cancelled() => {
                         is_running.store(false, Ordering::SeqCst);
                         break;
                     }

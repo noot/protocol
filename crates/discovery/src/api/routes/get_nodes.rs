@@ -162,7 +162,7 @@ mod tests {
             compute_specs: None,
         };
         match app_state.node_store.register_node(sample_node) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(_) => {
                 panic!("Error registering node");
             }
@@ -202,7 +202,7 @@ mod tests {
             compute_specs: None,
         };
         match app_state.node_store.register_node(older_node) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(_) => {
                 panic!("Error registering node");
             }
@@ -221,7 +221,7 @@ mod tests {
             compute_specs: None,
         };
         match app_state.node_store.register_node(newer_node) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(_) => {
                 panic!("Error registering node");
             }

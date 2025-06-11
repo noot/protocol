@@ -159,101 +159,98 @@ async fn fetch_node_logs(node_address: Address, app_state: Data<AppState>) -> se
         }
     };
 
-    match node {
-        Some(node) => {
-            let node_ip = node.ip_address;
-            let node_port = node.port;
+    if let Some(node) = node {
+        let node_ip = node.ip_address;
+        let node_port = node.port;
 
-            let node_url = format!("http://{}:{}", node_ip, node_port);
-            let logs_path = "/task/logs".to_string();
-            let logs_url = format!(
-                "{}{}?timestamp={}",
-                node_url,
-                logs_path,
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs()
-            );
+        let node_url = format!("http://{node_ip}:{node_port}");
+        let logs_path = "/task/logs".to_string();
+        let logs_url = format!(
+            "{}{}?timestamp={}",
+            node_url,
+            logs_path,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        );
 
-            let message_signature = match sign_request(&logs_path, &app_state.wallet, None).await {
-                Ok(sig) => sig,
-                Err(e) => {
-                    error!("Failed to sign request for node {}: {}", node_address, e);
-                    return json!({
-                        "success": false,
-                        "error": format!("Failed to sign request: {}", e),
-                        "status": node.status.to_string()
-                    });
-                }
-            };
+        let message_signature = match sign_request(&logs_path, &app_state.wallet, None).await {
+            Ok(sig) => sig,
+            Err(e) => {
+                error!("Failed to sign request for node {}: {}", node_address, e);
+                return json!({
+                    "success": false,
+                    "error": format!("Failed to sign request: {}", e),
+                    "status": node.status.to_string()
+                });
+            }
+        };
 
-            let mut headers = reqwest::header::HeaderMap::new();
-            headers.insert(
-                "x-address",
-                app_state
-                    .wallet
-                    .wallet
-                    .default_signer()
-                    .address()
-                    .to_string()
-                    .parse()
-                    .unwrap(),
-            );
-            headers.insert("x-signature", message_signature.parse().unwrap());
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            "x-address",
+            app_state
+                .wallet
+                .wallet
+                .default_signer()
+                .address()
+                .to_string()
+                .parse()
+                .unwrap(),
+        );
+        headers.insert("x-signature", message_signature.parse().unwrap());
 
-            match app_state
-                .http_client
-                .get(logs_url)
-                .timeout(Duration::from_secs(NODE_REQUEST_TIMEOUT))
-                .headers(headers)
-                .send()
-                .await
-            {
-                Ok(response) => {
-                    if response.status().is_success() {
-                        match response.json::<serde_json::Value>().await {
-                            Ok(logs) => logs,
-                            Err(e) => {
-                                error!("Failed to parse logs for node {}: {}", node_address, e);
-                                json!({
-                                    "success": false,
-                                    "error": format!("Failed to parse logs: {}", e),
-                                    "status": node.status.to_string()
-                                })
-                            }
+        match app_state
+            .http_client
+            .get(logs_url)
+            .timeout(Duration::from_secs(NODE_REQUEST_TIMEOUT))
+            .headers(headers)
+            .send()
+            .await
+        {
+            Ok(response) => {
+                if response.status().is_success() {
+                    match response.json::<serde_json::Value>().await {
+                        Ok(logs) => logs,
+                        Err(e) => {
+                            error!("Failed to parse logs for node {}: {}", node_address, e);
+                            json!({
+                                "success": false,
+                                "error": format!("Failed to parse logs: {}", e),
+                                "status": node.status.to_string()
+                            })
                         }
-                    } else {
-                        error!(
-                            "Failed to get logs for node {}: {}",
-                            node_address,
-                            response.status()
-                        );
-                        json!({
-                            "success": false,
-                            "error": format!("Failed to get logs: {}", response.status()),
-                            "status": node.status.to_string()
-                        })
                     }
-                }
-                Err(e) => {
-                    error!("Failed to fetch logs for node {}: {}", node_address, e);
+                } else {
+                    error!(
+                        "Failed to get logs for node {}: {}",
+                        node_address,
+                        response.status()
+                    );
                     json!({
                         "success": false,
-                        "error": format!("Failed to connect to node: {}", e),
+                        "error": format!("Failed to get logs: {}", response.status()),
                         "status": node.status.to_string()
                     })
                 }
             }
+            Err(e) => {
+                error!("Failed to fetch logs for node {}: {}", node_address, e);
+                json!({
+                    "success": false,
+                    "error": format!("Failed to connect to node: {}", e),
+                    "status": node.status.to_string()
+                })
+            }
         }
-        None => {
-            error!("Node {} not found in orchestrator", node_address);
-            json!({
-                "success": false,
-                "error": "Node not found in orchestrator",
-                "address": node_address.to_string()
-            })
-        }
+    } else {
+        error!("Node {} not found in orchestrator", node_address);
+        json!({
+            "success": false,
+            "error": "Node not found in orchestrator",
+            "address": node_address.to_string()
+        })
     }
 }
 

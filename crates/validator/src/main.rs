@@ -256,59 +256,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let synthetic_validator = if let Some(pool_id) = args.pool_id.clone() {
         let penalty = U256::from(args.validator_penalty) * Unit::ETHER.wei();
-        match contracts.synthetic_data_validator.clone() {
-            Some(validator) => {
-                info!(
-                    "Synthetic validator has penalty: {} ({})",
-                    penalty, args.validator_penalty
-                );
+        if let Some(validator) = contracts.synthetic_data_validator.clone() {
+            info!(
+                "Synthetic validator has penalty: {} ({})",
+                penalty, args.validator_penalty
+            );
 
-                let toploc_configs = match std::env::var("TOPLOC_CONFIGS") {
-                    Ok(configs) => configs,
-                    Err(_) => {
-                        error!("Toploc configs are required but not provided in environment");
-                        std::process::exit(1);
-                    }
-                };
-                info!("Toploc configs: {}", toploc_configs);
-
-                let configs = match serde_json::from_str(&toploc_configs) {
-                    Ok(configs) => configs,
-                    Err(e) => {
-                        error!("Failed to parse toploc configs: {}", e);
-                        std::process::exit(1);
-                    }
-                };
-
-                let s3_credentials = std::env::var("S3_CREDENTIALS").ok();
-                let gcs_storage =
-                    GcsStorageProvider::new(&args.bucket_name.unwrap(), &s3_credentials.unwrap())
-                        .await
-                        .unwrap();
-                let storage_provider = Arc::new(gcs_storage);
-
-                Some(SyntheticDataValidator::new(
-                    pool_id,
-                    validator,
-                    contracts.prime_network.clone(),
-                    configs,
-                    penalty,
-                    storage_provider,
-                    redis_store,
-                    cancellation_token,
-                    args.toploc_work_validation_interval,
-                    args.toploc_work_validation_unknown_status_expiry_seconds,
-                    args.toploc_grace_interval,
-                    args.batch_trigger_size,
-                    args.use_grouping,
-                    args.disable_toploc_invalidation,
-                    Some(metrics_ctx.clone()),
-                ))
-            }
-            None => {
-                error!("Synthetic data validator not found");
+            let toploc_configs = if let Ok(configs) = std::env::var("TOPLOC_CONFIGS") {
+                configs
+            } else {
+                error!("Toploc configs are required but not provided in environment");
                 std::process::exit(1);
-            }
+            };
+            info!("Toploc configs: {}", toploc_configs);
+
+            let configs = match serde_json::from_str(&toploc_configs) {
+                Ok(configs) => configs,
+                Err(e) => {
+                    error!("Failed to parse toploc configs: {}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            let s3_credentials = std::env::var("S3_CREDENTIALS").ok();
+            let gcs_storage =
+                GcsStorageProvider::new(&args.bucket_name.unwrap(), &s3_credentials.unwrap())
+                    .await
+                    .unwrap();
+            let storage_provider = Arc::new(gcs_storage);
+
+            Some(SyntheticDataValidator::new(
+                pool_id,
+                validator,
+                contracts.prime_network.clone(),
+                configs,
+                penalty,
+                storage_provider,
+                redis_store,
+                cancellation_token,
+                args.toploc_work_validation_interval,
+                args.toploc_work_validation_unknown_status_expiry_seconds,
+                args.toploc_grace_interval,
+                args.batch_trigger_size,
+                args.use_grouping,
+                args.disable_toploc_invalidation,
+                Some(metrics_ctx.clone()),
+            ))
+        } else {
+            error!("Synthetic data validator not found");
+            std::process::exit(1);
         }
     } else {
         None
@@ -370,7 +366,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 debug!("Fetching nodes from: {}{}", discovery_url, discovery_route);
                 let response = reqwest::Client::new()
-                    .get(format!("{}{}", discovery_url, discovery_route))
+                    .get(format!("{discovery_url}{discovery_route}"))
                     .headers(headers)
                     .timeout(Duration::from_secs(10))
                     .send()
@@ -404,12 +400,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Ensure nodes have enough stake
             let mut nodes_with_enough_stake = Vec::new();
-            let stake_manager = match contracts.stake_manager.as_ref() {
-                Some(manager) => manager,
-                None => {
-                    error!("Stake manager contract not initialized");
-                    continue;
-                }
+            let stake_manager = if let Some(manager) = contracts.stake_manager.as_ref() {
+                manager
+            } else {
+                error!("Stake manager contract not initialized");
+                continue;
             };
 
             let mut provider_stake_cache: std::collections::HashMap<String, (U256, U256)> =

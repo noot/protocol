@@ -4,10 +4,13 @@ use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
-use stun::agent::*;
-use stun::client::*;
-use stun::message::*;
-use stun::xoraddr::*;
+use stun::agent::TransactionId;
+use stun::client::ClientBuilder;
+use stun::message::{
+    Getter, Message, MessageType, BINDING_REQUEST, CLASS_ERROR_RESPONSE, CLASS_SUCCESS_RESPONSE,
+    METHOD_BINDING,
+};
+use stun::xoraddr::XorMappedAddress;
 
 use tracing::{debug, error, info};
 
@@ -33,7 +36,7 @@ impl StunCheck {
         let server_addr = tokio::net::lookup_host(server)
             .await?
             .next()
-            .ok_or_else(|| format!("DNS resolution failed for {}", server))?;
+            .ok_or_else(|| format!("DNS resolution failed for {server}"))?;
         debug!("STUN server {} resolved to {}", server, server_addr);
 
         conn.connect(server_addr).await?;
@@ -56,12 +59,12 @@ impl StunCheck {
             Ok(None) => {
                 client.close().await?;
                 return Err(
-                    format!("STUN handler channel closed unexpectedly for {}", server).into(),
+                    format!("STUN handler channel closed unexpectedly for {server}").into(),
                 );
             }
             Err(_) => {
                 client.close().await?;
-                return Err(format!("Timeout waiting for STUN response from {}", server).into());
+                return Err(format!("Timeout waiting for STUN response from {server}").into());
             }
         };
 
@@ -69,7 +72,7 @@ impl StunCheck {
             Ok(msg) => msg,
             Err(e) => {
                 client.close().await?;
-                return Err(format!("Error in STUN event body from {}: {}", server, e).into());
+                return Err(format!("Error in STUN event body from {server}: {e}").into());
             }
         };
 
@@ -137,7 +140,7 @@ mod tests {
     async fn test_get_public_ip() {
         let stun_check = StunCheck::new(Duration::from_secs(5), 0);
         let public_ip = stun_check.get_public_ip().await.unwrap();
-        println!("Public IP: {}", public_ip);
+        println!("Public IP: {public_ip}");
         assert!(!public_ip.is_empty());
     }
 }

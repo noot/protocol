@@ -38,15 +38,15 @@ impl<P: alloy_provider::Provider> Contract<P> {
             "domain_registry.json" => {
                 include_abi!("../../../../artifacts/abi/domain_registry.json")
             }
-            _ => panic!("Unknown ABI file: {}", path),
+            _ => panic!("Unknown ABI file: {path}"),
         };
 
         let abi_json: serde_json::Value = serde_json::from_slice(artifact)
             .map_err(|err| {
-                eprintln!("Failed to parse JSON: {}", err);
+                eprintln!("Failed to parse JSON: {err}");
                 std::process::exit(1);
             })
-            .unwrap_or_else(|_| {
+            .unwrap_or_else(|()| {
                 eprintln!("Error parsing JSON, exiting.");
                 std::process::exit(1);
             });

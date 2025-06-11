@@ -24,7 +24,7 @@ pub async fn sign_request(
     let message = if request_data_string.is_empty() {
         endpoint.to_string()
     } else {
-        format!("{}{}", endpoint, request_data_string)
+        format!("{endpoint}{request_data_string}")
     };
     let signature = wallet
         .signer
@@ -89,7 +89,7 @@ mod tests {
         let signature = sign_request(endpoint, &wallet, Some(&empty_data))
             .await
             .unwrap();
-        println!("Signature: {}", signature);
+        println!("Signature: {signature}");
         assert!(signature.starts_with("0x"));
         assert_eq!(signature.len(), 132);
     }

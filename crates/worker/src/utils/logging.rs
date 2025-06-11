@@ -20,8 +20,9 @@ impl FormatTime for SimpleTimeFormatter {
         let timestamp = now.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
 
         // Convert to time::OffsetDateTime
-        let datetime = time::OffsetDateTime::from_unix_timestamp(timestamp as i64)
-            .unwrap_or(time::OffsetDateTime::UNIX_EPOCH);
+        let datetime =
+            time::OffsetDateTime::from_unix_timestamp(i64::try_from(timestamp).unwrap_or(0))
+                .unwrap_or(time::OffsetDateTime::UNIX_EPOCH);
 
         // Format as hh:mm:ss
         let format = format_description!("[hour]:[minute]:[second]");
@@ -29,7 +30,7 @@ impl FormatTime for SimpleTimeFormatter {
             .format(format)
             .unwrap_or_else(|_| String::from("??:??:??"));
 
-        write!(w, "{}", formatted)
+        write!(w, "{formatted}")
     }
 }
 
@@ -69,7 +70,7 @@ pub fn setup_logging(cli: Option<&Cli>) -> Result<(), Box<dyn std::error::Error 
     }
 
     let env_filter = TracingEnvFilter::from_default_env()
-        .add_directive(format!("{}", log_level).parse()?)
+        .add_directive(format!("{log_level}").parse()?)
         .add_directive("reqwest=warn".parse()?)
         .add_directive("hyper=warn".parse()?)
         .add_directive("hyper_util=warn".parse()?)

@@ -45,12 +45,12 @@ impl ChainSync {
 
         // Safely parse provider_address and node_address
         let provider_address = Address::from_str(&node.provider_address).map_err(|e| {
-            eprintln!("Failed to parse provider address: {}", e);
+            eprintln!("Failed to parse provider address: {e}");
             anyhow::anyhow!("Invalid provider address")
         })?;
 
         let node_address = Address::from_str(&node.id).map_err(|e| {
-            eprintln!("Failed to parse node address: {}", e);
+            eprintln!("Failed to parse node address: {e}");
             anyhow::anyhow!("Invalid node address")
         })?;
 
@@ -59,7 +59,7 @@ impl ChainSync {
             .get_node(provider_address, node_address)
             .await
             .map_err(|e| {
-                eprintln!("Error retrieving node info: {}", e);
+                eprintln!("Error retrieving node info: {e}");
                 anyhow::anyhow!("Failed to retrieve node info")
             })?;
 
@@ -68,7 +68,7 @@ impl ChainSync {
             .get_provider(provider_address)
             .await
             .map_err(|e| {
-                eprintln!("Error retrieving provider info: {}", e);
+                eprintln!("Error retrieving provider info: {e}");
                 anyhow::anyhow!("Failed to retrieve provider info")
             })?;
 
@@ -83,12 +83,12 @@ impl ChainSync {
             .is_node_blacklisted(node.node.compute_pool_id, node_address)
             .await
             .map_err(|e| {
-                eprintln!("Error checking if node is blacklisted: {}", e);
+                eprintln!("Error checking if node is blacklisted: {e}");
                 anyhow::anyhow!("Failed to check blacklist status")
             })?;
         n.is_blacklisted = is_blacklisted;
         match node_store.update_node(n) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(e) => {
                 error!("Error updating node: {}", e);
             }
@@ -128,7 +128,7 @@ impl ChainSync {
                             }
                         }
                     }
-                    _ = cancel_token.cancelled() => {
+                    () = cancel_token.cancelled() => {
                         break;
                     }
                 }

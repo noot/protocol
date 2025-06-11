@@ -40,7 +40,7 @@ impl TaskStore {
 
         // Notify observers synchronously
         let observers = self.observers.lock().unwrap().clone();
-        for observer in observers.iter() {
+        for observer in &observers {
             if let Err(e) = observer.on_task_created(&task) {
                 error!("Error notifying observer: {}", e);
             }
@@ -58,7 +58,7 @@ impl TaskStore {
         // Get each task by ID and collect into vector
         let mut tasks: Vec<Task> = Vec::new();
         for id in task_ids {
-            let task_key = format!("{}{}", TASK_KEY_PREFIX, id);
+            let task_key = format!("{TASK_KEY_PREFIX}{id}");
             let task: Option<Task> = con.get(&task_key).await?;
             if let Some(task) = task {
                 tasks.push(task);
@@ -76,7 +76,7 @@ impl TaskStore {
         let task = self.get_task(&id).await?;
 
         // Delete task from individual storage
-        let task_key = format!("{}{}", TASK_KEY_PREFIX, id);
+        let task_key = format!("{TASK_KEY_PREFIX}{id}");
         let _: () = con.del(&task_key).await?;
 
         // Remove task ID from list
@@ -84,7 +84,7 @@ impl TaskStore {
 
         // Notify observers synchronously
         let observers = self.observers.lock().unwrap().clone();
-        for observer in observers.iter() {
+        for observer in &observers {
             if let Err(e) = observer.on_task_deleted(task.clone()) {
                 error!("Error notifying observer: {}", e);
             }
@@ -95,7 +95,7 @@ impl TaskStore {
 
     pub async fn get_task(&self, id: &str) -> Result<Option<Task>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let task_key = format!("{}{}", TASK_KEY_PREFIX, id);
+        let task_key = format!("{TASK_KEY_PREFIX}{id}");
         let task: Option<Task> = con.get(&task_key).await?;
         Ok(task)
     }

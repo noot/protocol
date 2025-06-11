@@ -13,6 +13,7 @@ use tokio::time::{timeout, Duration};
 
 use crate::web3::wallet::WalletProvider;
 
+#[must_use]
 pub fn get_selector(fn_image: &str) -> Selector {
     keccak256(fn_image.as_bytes())[..4].try_into().unwrap()
 }

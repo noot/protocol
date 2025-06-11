@@ -50,14 +50,13 @@ pub async fn invite_node(
     let pool_id = U256::from(invite.pool_id);
 
     // Nodes is actually my own node address so I need wallet access
-    let bytes_array: [u8; 65] = match invite_bytes[..65].try_into() {
-        Ok(array) => array,
-        Err(_) => {
-            error!("Failed to convert invite bytes to fixed-size array");
-            return HttpResponse::BadRequest().json(json!({
-                "error": "Invalid invite signature format"
-            }));
-        }
+    let bytes_array: [u8; 65] = if let Ok(array) = invite_bytes[..65].try_into() {
+        array
+    } else {
+        error!("Failed to convert invite bytes to fixed-size array");
+        return HttpResponse::BadRequest().json(json!({
+            "error": "Invalid invite signature format"
+        }));
     };
 
     let provider_address = app_state.provider_wallet.wallet.default_signer().address();
@@ -103,7 +102,7 @@ pub async fn invite_node(
     let provider = &app_state.provider_wallet.provider;
     match retry_call(call, 3, provider.clone(), None).await {
         Ok(result) => {
-            Console::success(&format!("Successfully joined compute pool: {}", result));
+            Console::success(&format!("Successfully joined compute pool: {result}"));
         }
         Err(err) => {
             error!("Failed to join compute pool: {:?}", err);
@@ -113,17 +112,14 @@ pub async fn invite_node(
         }
     }
     let endpoint = if let Some(url) = &invite.master_url {
-        format!("{}/heartbeat", url)
+        format!("{url}/heartbeat")
+    } else if let (Some(ip), Some(port)) = (&invite.master_ip, &invite.master_port) {
+        format!("http://{ip}:{port}/heartbeat")
     } else {
-        match (&invite.master_ip, &invite.master_port) {
-            (Some(ip), Some(port)) => format!("http://{}:{}/heartbeat", ip, port),
-            _ => {
-                error!("Missing master IP or port in invite request");
-                return HttpResponse::BadRequest().json(json!({
-                    "error": "Missing master IP or port"
-                }));
-            }
-        }
+        error!("Missing master IP or port in invite request");
+        return HttpResponse::BadRequest().json(json!({
+            "error": "Missing master IP or port"
+        }));
     };
 
     if let Err(err) = app_state.heartbeat_service.start(endpoint).await {

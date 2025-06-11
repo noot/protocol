@@ -56,8 +56,7 @@ impl DiscoveryService {
                 .await
                 .unwrap_or_else(|_| "No error message".to_string());
             return Err(format!(
-                "Error: Received response with status code {}: {}",
-                status, error_text
+                "Error: Received response with status code {status}: {error_text}"
             )
             .into());
         }

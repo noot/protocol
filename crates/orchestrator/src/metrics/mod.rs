@@ -44,7 +44,7 @@ impl MetricsContext {
             label,
             &self.pool_id,
         ]) {
-            println!("Error removing compute task gauge: {}", e);
+            println!("Error removing compute task gauge: {e}");
         }
     }
 

@@ -27,7 +27,7 @@ impl Scheduler {
     pub async fn get_task_for_node(&self, node_address: Address) -> Result<Option<Task>> {
         let mut all_tasks = self.store_context.task_store.get_all_tasks().await?;
 
-        for plugin in self.plugins.iter() {
+        for plugin in &self.plugins {
             let filtered_tasks = plugin.filter_tasks(&all_tasks, &node_address).await?;
             all_tasks = filtered_tasks;
         }

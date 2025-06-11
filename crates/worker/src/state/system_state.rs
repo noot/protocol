@@ -2,7 +2,6 @@ use anyhow::Result;
 use directories::ProjectDirs;
 use log::debug;
 use log::error;
-use log::warn;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -23,7 +22,7 @@ fn get_default_state_dir() -> Option<String> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct PersistedSystemState {
     endpoint: Option<String>,
-    p2p_seed: Option<u64>,
+    p2p_seed: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -34,8 +33,8 @@ pub struct SystemState {
     state_dir_overwrite: Option<PathBuf>,
     disable_state_storing: bool,
     pub compute_pool_id: Option<String>,
-    pub p2p_id: Option<String>,
-    pub p2p_seed: Option<u64>,
+    p2p_id: String,
+    p2p_seed: u64,
 }
 
 impl SystemState {
@@ -63,25 +62,14 @@ impl SystemState {
             } else if let Ok(Some(loaded_state)) = SystemState::load_state(path) {
                 debug!("Loaded previous state from {:?}", state_file);
                 endpoint = loaded_state.endpoint;
-                p2p_seed = loaded_state.p2p_seed;
+                p2p_seed = Some(loaded_state.p2p_seed);
             } else {
                 debug!("Failed to load state from {:?}", state_file);
             }
         }
-        if p2p_seed.is_none() {
-            let seed = generate_random_seed();
-            p2p_seed = Some(seed);
-        }
-        // Generate p2p_id from seed if available
 
-        let p2p_id: Option<String> =
-            p2p_seed.and_then(|seed| match generate_iroh_node_id_from_seed(seed) {
-                Ok(id) => Some(id),
-                Err(_) => {
-                    warn!("Failed to generate p2p_id from seed");
-                    None
-                }
-            });
+        let p2p_seed: u64 = p2p_seed.unwrap_or(generate_random_seed());
+        let p2p_id = generate_iroh_node_id_from_seed(p2p_seed);
 
         Self {
             last_heartbeat: Arc::new(RwLock::new(None)),
@@ -101,34 +89,30 @@ impl SystemState {
                 // Get values without block_on
                 debug!("Saving p2p_seed: {:?}", self.p2p_seed);
 
-                // Ensure p2p_seed is valid before creating state
-                if let Some(seed) = self.p2p_seed {
-                    let state = PersistedSystemState {
-                        endpoint: heartbeat_endpoint,
-                        p2p_seed: Some(seed),
-                    };
+                let state = PersistedSystemState {
+                    endpoint: heartbeat_endpoint,
+                    p2p_seed: self.p2p_seed,
+                };
 
-                    debug!("state: {:?}", state);
+                debug!("state: {:?}", state);
 
-                    fs::create_dir_all(state_dir)?;
-                    let state_path = state_dir.join(STATE_FILENAME);
+                fs::create_dir_all(state_dir)?;
+                let state_path = state_dir.join(STATE_FILENAME);
 
-                    // Use JSON serialization instead of TOML
-                    match serde_json::to_string_pretty(&state) {
-                        Ok(json_string) => {
-                            fs::write(&state_path, json_string)?;
-                            debug!("Saved state to {:?}", state_path);
-                        }
-                        Err(e) => {
-                            error!("Failed to serialize state: {}", e);
-                            return Err(anyhow::anyhow!("Failed to serialize state: {}", e));
-                        }
+                // Use JSON serialization instead of TOML
+                match serde_json::to_string_pretty(&state) {
+                    Ok(json_string) => {
+                        fs::write(&state_path, json_string)?;
+                        debug!("Saved state to {:?}", state_path);
                     }
-                } else {
-                    warn!("Cannot save state: p2p_seed is None");
+                    Err(e) => {
+                        error!("Failed to serialize state: {}", e);
+                        return Err(anyhow::anyhow!("Failed to serialize state: {}", e));
+                    }
                 }
             }
         }
+
         Ok(())
     }
 
@@ -147,12 +131,12 @@ impl SystemState {
         Ok(None)
     }
 
-    pub fn get_p2p_seed(&self) -> Option<u64> {
+    pub fn p2p_seed(&self) -> u64 {
         self.p2p_seed
     }
 
-    pub fn get_p2p_id(&self) -> Option<String> {
-        self.p2p_id.clone()
+    pub fn p2p_id(&self) -> &str {
+        &self.p2p_id
     }
 
     pub async fn update_last_heartbeat(&self) {
@@ -227,7 +211,6 @@ mod tests {
             false,
             None,
         );
-        assert!(state.p2p_id.is_some());
         let _ = state
             .set_running(true, Some("http://localhost:8080/heartbeat".to_string()))
             .await;

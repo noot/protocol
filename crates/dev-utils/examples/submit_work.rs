@@ -47,9 +47,7 @@ async fn main() -> Result<()> {
     let node = Address::from_str(&args.node).expect("Invalid node address");
     let work_key = hex::decode(&args.work_key).expect("Invalid work key hex");
 
-    if work_key.len() != 32 {
-        panic!("Work key must be 32 bytes");
-    }
+    assert!(!(work_key.len() != 32), "Work key must be 32 bytes");
 
     let call = contracts
         .compute_pool
@@ -65,7 +63,7 @@ async fn main() -> Result<()> {
         "Submitted work for node {} in pool {}",
         args.node, args.pool_id
     );
-    println!("Transaction hash: {:?}", tx);
+    println!("Transaction hash: {tx:?}");
 
     Ok(())
 }

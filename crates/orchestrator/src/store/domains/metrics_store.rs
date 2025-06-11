@@ -44,10 +44,7 @@ impl MetricsStore {
                 entry.key.task_id.clone()
             };
             let cleaned_label = self.clean_label(&entry.key.label);
-            let redis_key = format!(
-                "{}:{}:{}",
-                ORCHESTRATOR_METRICS_STORE, task_id, cleaned_label
-            );
+            let redis_key = format!("{ORCHESTRATOR_METRICS_STORE}:{task_id}:{cleaned_label}");
 
             let address = if task_id == "manual" {
                 Address::ZERO.to_string()
@@ -86,7 +83,7 @@ impl MetricsStore {
         self.store_metrics(
             Some(vec![MetricEntry {
                 key: shared::models::metric::MetricKey {
-                    task_id: "".to_string(),
+                    task_id: String::new(),
                     label,
                 },
                 value,
@@ -99,10 +96,7 @@ impl MetricsStore {
     pub async fn delete_metric(&self, task_id: &str, label: &str, address: &str) -> Result<bool> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
         let cleaned_label = self.clean_label(label);
-        let redis_key = format!(
-            "{}:{}:{}",
-            ORCHESTRATOR_METRICS_STORE, task_id, cleaned_label
-        );
+        let redis_key = format!("{ORCHESTRATOR_METRICS_STORE}:{task_id}:{cleaned_label}");
 
         match con.hdel::<_, _, i32>(redis_key, address).await {
             Ok(deleted) => Ok(deleted == 1),
@@ -118,7 +112,7 @@ impl MetricsStore {
         task_id: &str,
     ) -> Result<HashMap<String, f64>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let pattern = format!("{}:{}:*", ORCHESTRATOR_METRICS_STORE, task_id);
+        let pattern = format!("{ORCHESTRATOR_METRICS_STORE}:{task_id}:*");
 
         let mut iter: redis::AsyncIter<String> = con.scan_match(&pattern).await?;
         let mut all_keys = Vec::new();
@@ -145,7 +139,7 @@ impl MetricsStore {
 
     pub async fn get_aggregate_metrics_for_all_tasks(&self) -> Result<HashMap<String, f64>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let pattern = format!("{}:*:*", ORCHESTRATOR_METRICS_STORE);
+        let pattern = format!("{ORCHESTRATOR_METRICS_STORE}:*:*");
 
         // Use SCAN instead of KEYS
         let mut iter: redis::AsyncIter<String> = con.scan_match(&pattern).await?;
@@ -175,7 +169,7 @@ impl MetricsStore {
         node_address: Address,
     ) -> Result<HashMap<String, HashMap<String, f64>>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let pattern = format!("{}:*:*", ORCHESTRATOR_METRICS_STORE);
+        let pattern = format!("{ORCHESTRATOR_METRICS_STORE}:*:*");
 
         // Use SCAN instead of KEYS
         let mut iter: redis::AsyncIter<String> = con.scan_match(&pattern).await?;
@@ -211,7 +205,7 @@ impl MetricsStore {
         &self,
     ) -> Result<HashMap<String, HashMap<String, HashMap<String, f64>>>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let pattern = format!("{}:*:*", ORCHESTRATOR_METRICS_STORE);
+        let pattern = format!("{ORCHESTRATOR_METRICS_STORE}:*:*");
 
         // Use SCAN instead of KEYS
         let mut iter: redis::AsyncIter<String> = con.scan_match(&pattern).await?;

@@ -51,6 +51,7 @@ impl Wallet {
         })
     }
 
+    #[must_use]
     pub fn address(&self) -> Address {
         self.wallet.default_signer().address()
     }
@@ -62,6 +63,7 @@ impl Wallet {
         Ok(balance)
     }
 
+    #[must_use]
     pub fn provider(&self) -> WalletProvider {
         self.provider.clone()
     }

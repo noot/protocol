@@ -47,7 +47,7 @@ pub struct DockerManager {
 
 impl DockerManager {
     const DEFAULT_LOG_TAIL: i64 = 300;
-    /// Create a new DockerManager instance
+    /// Create a new `DockerManager` instance
     pub fn new(storage_path: Option<String>) -> Result<Self, DockerError> {
         let docker = match Docker::connect_with_unix_defaults() {
             Ok(docker) => docker,
@@ -116,7 +116,7 @@ impl DockerManager {
         let mut final_volumes = Vec::new();
         if self.storage_path.is_some() {
             // Create task-specific data volume
-            let volume_name = format!("{}_data", name);
+            let volume_name = format!("{name}_data");
             let path = format!(
                 "{}/{}",
                 self.storage_path.clone().unwrap(),
@@ -180,7 +180,7 @@ impl DockerManager {
 
         let env = env_vars.map(|vars| {
             vars.iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<String>>()
         });
         let volume_binds = {
@@ -188,9 +188,9 @@ impl DockerManager {
                 .iter()
                 .map(|(vol, container, read_only)| {
                     if *read_only {
-                        format!("{}:{}:ro", vol, container)
+                        format!("{vol}:{container}:ro")
                     } else {
-                        format!("{}:{}", vol, container)
+                        format!("{vol}:{container}")
                     }
                 })
                 .collect::<Vec<String>>();
@@ -198,9 +198,9 @@ impl DockerManager {
             if let Some(vols) = volumes {
                 binds.extend(vols.into_iter().map(|(host, container, read_only)| {
                     if read_only {
-                        format!("{}:{}:ro", host, container)
+                        format!("{host}:{container}:ro")
                     } else {
-                        format!("{}:{}", host, container)
+                        format!("{host}:{container}")
                     }
                 }));
             }
@@ -213,7 +213,10 @@ impl DockerManager {
             let device_ids = match &gpu.indices {
                 Some(indices) if !indices.is_empty() => {
                     // Use specific GPU indices if available
-                    indices.iter().map(|i| i.to_string()).collect()
+                    indices
+                        .iter()
+                        .map(std::string::ToString::to_string)
+                        .collect()
                 }
                 _ => {
                     // Request all available GPUs if no specific indices
@@ -294,7 +297,7 @@ impl DockerManager {
         // --- Step 1: Remove container with retries ---
         for attempt in 0..max_retries {
             match self.docker.remove_container(container_id, None).await {
-                Ok(_) => {
+                Ok(()) => {
                     info!("Container {} removed successfully", container_id);
                     break;
                 }
@@ -352,11 +355,11 @@ impl DockerManager {
         // --- Step 3: Remove volume with retries ---
         if let Some(container) = container {
             let trimmed_name = container.names.first().unwrap().trim_start_matches('/');
-            let volume_name = format!("{}_data", trimmed_name);
+            let volume_name = format!("{trimmed_name}_data");
 
             for attempt in 0..max_retries {
                 match self.docker.remove_volume(&volume_name, None).await {
-                    Ok(_) => {
+                    Ok(()) => {
                         info!("Volume {} removed successfully", volume_name);
                         break;
                     }
@@ -386,7 +389,7 @@ impl DockerManager {
 
             // --- Step 4: Remove directory with retries ---
             if let Some(path) = &self.storage_path {
-                let dir_path = format!("{}/{}", path, trimmed_name);
+                let dir_path = format!("{path}/{trimmed_name}");
 
                 // Check if directory exists before attempting to remove it
                 if std::path::Path::new(&dir_path).exists() {
@@ -394,7 +397,7 @@ impl DockerManager {
 
                     for attempt in 0..max_retries {
                         match std::fs::remove_dir_all(&dir_path) {
-                            Ok(_) => {
+                            Ok(()) => {
                                 info!("Directory {} removed successfully", dir_path);
                                 success = true;
                                 break;
@@ -538,7 +541,7 @@ impl DockerManager {
                         let parts: Vec<&str> = cleaned_str.split('\r').collect();
                         if let Some(last_segment) = parts.last() {
                             // Update our current line buffer with the latest segment.
-                            current_line = last_segment.to_string();
+                            current_line = (*last_segment).to_string();
                         }
                     } else {
                         // Flush any buffered progress update if present.

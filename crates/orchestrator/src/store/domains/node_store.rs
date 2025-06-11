@@ -21,7 +21,7 @@ impl NodeStore {
 
     pub async fn get_nodes(&self) -> Result<Vec<OrchestratorNode>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let keys: Vec<String> = con.keys(format!("{}:*", ORCHESTRATOR_BASE_KEY)).await?;
+        let keys: Vec<String> = con.keys(format!("{ORCHESTRATOR_BASE_KEY}:*")).await?;
         let mut nodes: Vec<OrchestratorNode> = Vec::new();
 
         for node in keys {
@@ -61,7 +61,7 @@ impl NodeStore {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
 
         let node_string: Option<String> = match con
-            .get::<_, Option<String>>(format!("{}:{}", ORCHESTRATOR_BASE_KEY, address))
+            .get::<_, Option<String>>(format!("{ORCHESTRATOR_BASE_KEY}:{address}"))
             .await
         {
             Ok(value) => value,
@@ -73,7 +73,7 @@ impl NodeStore {
 
     pub async fn get_uninvited_nodes(&self) -> Result<Vec<OrchestratorNode>> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let keys: Vec<String> = con.keys(format!("{}:*", ORCHESTRATOR_BASE_KEY)).await?;
+        let keys: Vec<String> = con.keys(format!("{ORCHESTRATOR_BASE_KEY}:*")).await?;
         let mut nodes: Vec<OrchestratorNode> = Vec::new();
 
         for key in keys {
@@ -95,7 +95,7 @@ impl NodeStore {
         status: NodeStatus,
     ) -> Result<()> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let node_key: String = format!("{}:{}", ORCHESTRATOR_BASE_KEY, node_address);
+        let node_key: String = format!("{ORCHESTRATOR_BASE_KEY}:{node_address}");
         let node_string: String = con.get(&node_key).await?;
         let mut node: OrchestratorNode = serde_json::from_str(&node_string)?;
         node.status = status;
@@ -107,7 +107,7 @@ impl NodeStore {
 
     pub async fn update_node_version(&self, node_address: &Address, version: &str) -> Result<()> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let node_key: String = format!("{}:{}", ORCHESTRATOR_BASE_KEY, node_address);
+        let node_key: String = format!("{ORCHESTRATOR_BASE_KEY}:{node_address}");
         let node_string: String = con.get(&node_key).await?;
         let mut node: OrchestratorNode = serde_json::from_str(&node_string)?;
         node.version = Some(version.to_string());
@@ -118,7 +118,7 @@ impl NodeStore {
 
     pub async fn update_node_p2p_id(&self, node_address: &Address, p2p_id: &str) -> Result<()> {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
-        let node_key: String = format!("{}:{}", ORCHESTRATOR_BASE_KEY, node_address);
+        let node_key: String = format!("{ORCHESTRATOR_BASE_KEY}:{node_address}");
         let node_string: String = con.get(&node_key).await?;
         let mut node: OrchestratorNode = serde_json::from_str(&node_string)?;
         node.p2p_id = Some(p2p_id.to_string());
@@ -136,7 +136,7 @@ impl NodeStore {
         let mut con = self.redis.client.get_multiplexed_async_connection().await?;
 
         let node_value: Value = con
-            .get(format!("{}:{}", ORCHESTRATOR_BASE_KEY, node_address))
+            .get(format!("{ORCHESTRATOR_BASE_KEY}:{node_address}"))
             .await?;
 
         match node_value {
@@ -147,24 +147,21 @@ impl NodeStore {
                         redis::RedisError::from((
                             redis::ErrorKind::TypeError,
                             "Failed to deserialize Node from string",
-                            format!("Invalid JSON string: {:?}", node_string),
+                            format!("Invalid JSON string: {node_string:?}"),
                         ))
                     })
                     .unwrap();
                 let task_state = task_state.map(|state| TaskState::from(state.as_str()));
                 let details = (current_task, task_state);
-                match details {
-                    (Some(task), Some(task_state)) => {
-                        node.task_state = Some(task_state);
-                        node.task_id = Some(task);
-                    }
-                    _ => {
-                        node.task_state = None;
-                        node.task_id = None;
-                    }
+                if let (Some(task), Some(task_state)) = details {
+                    node.task_state = Some(task_state);
+                    node.task_id = Some(task);
+                } else {
+                    node.task_state = None;
+                    node.task_id = None;
                 }
                 let node_string = node.to_string();
-                let node_key = format!("{}:{}", ORCHESTRATOR_BASE_KEY, node_address);
+                let node_key = format!("{ORCHESTRATOR_BASE_KEY}:{node_address}");
                 let _: () = con.set(&node_key, node_string).await?;
             }
             _ => {

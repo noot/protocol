@@ -9,7 +9,7 @@ impl Console {
     const MAX_WIDTH: usize = 80;
 
     /// Calculates the content width for boxes.
-    /// It uses the available terminal width (minus a margin) and caps it at MAX_WIDTH.
+    /// It uses the available terminal width (minus a margin) and caps it at `MAX_WIDTH`.
     fn get_content_width() -> usize {
         let term_width = Term::stdout().size().1 as usize;
         // Leave a margin of 10 columns.
@@ -39,7 +39,7 @@ impl Console {
         let content_width = Self::get_content_width();
         let top_border = format!("╔{}╗", "═".repeat(content_width));
         let centered_title = Self::center_text(title, content_width);
-        let middle_line = format!("║{}║", centered_title);
+        let middle_line = format!("║{centered_title}║");
         let bottom_border = format!("╚{}╝", "═".repeat(content_width));
 
         println!();

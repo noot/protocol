@@ -171,10 +171,7 @@ impl DiscoveryMonitor {
                     // Node is active False but we have it in store and it is healthy
                     // This means that the node likely got kicked by e.g. the validator
                     // We simply remove it from the store now and will rediscover it later?
-                    println!(
-                        "Node {} is no longer active on chain, marking as dead",
-                        node_address
-                    );
+                    println!("Node {node_address} is no longer active on chain, marking as dead");
                     if !discovery_node.is_provider_whitelisted {
                         if let Err(e) = self
                             .store_context

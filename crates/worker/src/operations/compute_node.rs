@@ -28,7 +28,7 @@ impl<'c> ComputeNodeOperations<'c> {
             system_state,
         }
     }
-    pub fn start_monitoring(&self, cancellation_token: CancellationToken) -> Result<()> {
+    pub fn start_monitoring(&self, cancellation_token: CancellationToken) {
         let provider_address = self.provider_wallet.wallet.default_signer().address();
         let node_address = self.node_wallet.wallet.default_signer().address();
         let contracts = self.contracts.clone();
@@ -39,21 +39,19 @@ impl<'c> ComputeNodeOperations<'c> {
         tokio::spawn(async move {
             loop {
                 tokio::select! {
-                    _ = cancellation_token.cancelled() => {
+                    () = cancellation_token.cancelled() => {
                         Console::info("Monitor", "Shutting down node status monitor...");
                         break;
                     }
-                    _ = async {
+                    () = async {
                         match contracts.compute_registry.get_node(provider_address, node_address).await {
                             Ok((active, validated)) => {
                                 if first_check || active != last_active {
                                     if !first_check {
-                                        Console::info("🔄 Chain Sync - Pool membership changed", &format!("From {} to {}",
-                                            last_active,
-                                            active
+                                        Console::info("🔄 Chain Sync - Pool membership changed", &format!("From {last_active} to {active}"
                                         ));
                                     } else {
-                                        Console::info("🔄 Chain Sync - Node pool membership", &format!("{}", active));
+                                        Console::info("🔄 Chain Sync - Node pool membership", &format!("{active}"));
                                     }
                                     last_active = active;
                                 }
@@ -67,12 +65,10 @@ impl<'c> ComputeNodeOperations<'c> {
 
                                 if first_check || validated != last_validated {
                                     if !first_check {
-                                        Console::info("🔄 Chain Sync - Validation changed", &format!("From {} to {}",
-                                            last_validated,
-                                            validated
+                                        Console::info("🔄 Chain Sync - Validation changed", &format!("From {last_validated} to {validated}"
                                         ));
                                     } else {
-                                        Console::info("🔄 Chain Sync - Node validation", &format!("{}", validated));
+                                        Console::info("🔄 Chain Sync - Node validation", &format!("{validated}"));
                                     }
                                     last_validated = validated;
                                 }
@@ -87,7 +83,6 @@ impl<'c> ComputeNodeOperations<'c> {
                 }
             }
         });
-        Ok(())
     }
 
     pub async fn check_compute_node_exists(&self) -> Result<bool, Box<dyn std::error::Error>> {
@@ -135,7 +130,7 @@ impl<'c> ComputeNodeOperations<'c> {
             .prime_network
             .add_compute_node(node_address, compute_units, signature.to_vec())
             .await?;
-        Console::success(&format!("Add node tx: {:?}", add_node_tx));
+        Console::success(&format!("Add node tx: {add_node_tx:?}"));
         Ok(true)
     }
 
@@ -154,7 +149,7 @@ impl<'c> ComputeNodeOperations<'c> {
             .prime_network
             .remove_compute_node(provider_address, node_address)
             .await?;
-        Console::success(&format!("Remove node tx: {:?}", remove_node_tx));
+        Console::success(&format!("Remove node tx: {remove_node_tx:?}"));
         Ok(true)
     }
 }

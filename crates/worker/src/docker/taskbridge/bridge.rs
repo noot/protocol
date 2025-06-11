@@ -52,9 +52,9 @@ impl TaskBridge {
             Some(path) => path.to_string(),
             None => {
                 if cfg!(target_os = "macos") {
-                    format!("{}{}", DEFAULT_MACOS_SOCKET, SOCKET_NAME)
+                    format!("{DEFAULT_MACOS_SOCKET}{SOCKET_NAME}")
                 } else {
-                    format!("{}{}", DEFAULT_LINUX_SOCKET, SOCKET_NAME)
+                    format!("{DEFAULT_LINUX_SOCKET}{SOCKET_NAME}")
                 }
             }
         };
@@ -72,7 +72,7 @@ impl TaskBridge {
 
     async fn handle_metric(self: Arc<Self>, input: &MetricInput) -> Result<()> {
         debug!("Processing metric message");
-        for (key, value) in input.metrics.iter() {
+        for (key, value) in &input.metrics {
             debug!("Metric - Key: {}, Value: {}", key, value);
             let _ = self
                 .metrics_store
@@ -141,12 +141,11 @@ impl TaskBridge {
                     let file_sha_inner = file_sha.to_string();
                     let contracts_inner = contracts_ref.clone();
                     let node_inner = node_ref.clone();
-                    let provider = match self.node_wallet.as_ref() {
-                        Some(wallet) => wallet.provider(),
-                        None => {
-                            error!("No wallet provider found");
-                            return Err(anyhow::anyhow!("No wallet provider found"));
-                        }
+                    let provider = if let Some(wallet) = self.node_wallet.as_ref() {
+                        wallet.provider()
+                    } else {
+                        error!("No wallet provider found");
+                        return Err(anyhow::anyhow!("No wallet provider found"));
                     };
 
                     let mut work_units = 1.0;
@@ -206,7 +205,7 @@ impl TaskBridge {
 
         if let Some(parent) = socket_path.parent() {
             match fs::create_dir_all(parent) {
-                Ok(_) => debug!("Created parent directory: {}", parent.display()),
+                Ok(()) => debug!("Created parent directory: {}", parent.display()),
                 Err(e) => {
                     error!(
                         "Failed to create parent directory {}: {}",
@@ -221,7 +220,7 @@ impl TaskBridge {
         // Cleanup existing socket if present
         if socket_path.exists() {
             match fs::remove_file(socket_path) {
-                Ok(_) => debug!("Removed existing socket file"),
+                Ok(()) => debug!("Removed existing socket file"),
                 Err(e) => {
                     error!("Failed to remove existing socket file: {}", e);
                     return Err(e.into());
@@ -242,7 +241,7 @@ impl TaskBridge {
 
         // allow both owner and group to read/write
         match fs::set_permissions(socket_path, fs::Permissions::from_mode(0o666)) {
-            Ok(_) => debug!("Set socket permissions to 0o666"),
+            Ok(()) => debug!("Set socket permissions to 0o666"),
             Err(e) => {
                 error!("Failed to set socket permissions: {}", e);
                 return Err(e.into());
@@ -499,8 +498,7 @@ mod tests {
         let all_metrics = metrics_store.get_all_metrics().await;
         assert!(
             all_metrics.is_empty(),
-            "Expected metrics to be empty but found: {:?}",
-            all_metrics
+            "Expected metrics to be empty but found: {all_metrics:?}"
         );
 
         bridge_handle.abort();

@@ -19,6 +19,7 @@ pub struct RedisStore {
 }
 
 impl RedisStore {
+    #[must_use]
     pub fn new(redis_url: &str) -> Self {
         match Client::open(redis_url) {
             Ok(client) => {
@@ -30,12 +31,13 @@ impl RedisStore {
                 }
             }
             Err(e) => {
-                panic!("Redis connection error: {}", e);
+                panic!("Redis connection error: {e}");
             }
         }
     }
 
     #[cfg(test)]
+    #[must_use]
     pub fn new_test() -> Self {
         let server = RedisServer::new();
 
@@ -45,7 +47,7 @@ impl RedisStore {
             _ => panic!("Expected TCP connection"),
         };
 
-        let redis_url = format!("redis://{}:{}", host, port);
+        let redis_url = format!("redis://{host}:{port}");
         debug!("Starting test Redis server at {}", redis_url);
 
         // Add a small delay to ensure server is ready

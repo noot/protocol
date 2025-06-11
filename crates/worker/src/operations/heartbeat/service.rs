@@ -92,7 +92,7 @@ impl HeartbeatService {
                         if !state.is_running().await {
                             break;
                         }
-                        match send_heartbeat(&client, state.get_heartbeat_endpoint().await, wallet_clone.clone(), docker_service.clone(), metrics_store.clone(), state.get_p2p_id()).await {
+                        match send_heartbeat(&client, state.get_heartbeat_endpoint().await, wallet_clone.clone(), docker_service.clone(), metrics_store.clone(), state.p2p_id().to_string()).await {
                             Ok(_) => {
                                 state.update_last_heartbeat().await;
                                 if had_error {
@@ -106,12 +106,12 @@ impl HeartbeatService {
                                 }
                             }
                             Err(e) => {
-                                log::error!("{}", &format!("Failed to sync with orchestrator: {:?}", e));
+                                log::error!("{}", &format!("Failed to sync with orchestrator: {e:?}"));
                                 had_error = true;
                             }
                         }
                     }
-                    _ = cancellation_token.cancelled() => {
+                    () = cancellation_token.cancelled() => {
                         log::info!("Sync service received cancellation signal"); // Updated log message
                         if let Err(e) = state.set_running(false, None).await {
                             log::error!("Failed to set running to false: {:?}", e);
@@ -143,7 +143,7 @@ async fn send_heartbeat(
     wallet: Wallet,
     docker_service: Arc<DockerService>,
     metrics_store: Arc<MetricsStore>,
-    p2p_id: Option<String>,
+    p2p_id: String,
 ) -> Result<HeartbeatResponse, HeartbeatError> {
     if endpoint.is_none() {
         return Err(HeartbeatError::RequestFailed);
@@ -221,11 +221,7 @@ async fn send_heartbeat(
     let new_task = match heartbeat_response.current_task {
         Some(task) => {
             // Only log if task image changed or there was no previous task
-            if old_task
-                .as_ref()
-                .map(|t| t.image != task.image)
-                .unwrap_or(true)
-            {
+            if old_task.as_ref().map_or(true, |t| t.image != task.image) {
                 log::info!("Current task is to run image: {:?}", task.image);
             }
             Some(task)

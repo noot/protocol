@@ -77,11 +77,11 @@ pub enum Commands {
         #[arg(long)]
         discovery_url: Option<String>,
 
-        /// Private key for the provider (not recommended, use environment variable PRIVATE_KEY_PROVIDER instead)
+        /// Private key for the provider (not recommended, use environment variable `PRIVATE_KEY_PROVIDER` instead)
         #[arg(long)]
         private_key_provider: Option<String>,
 
-        /// Private key for the node (not recommended, use environment variable PRIVATE_KEY_NODE instead)
+        /// Private key for the node (not recommended, use environment variable `PRIVATE_KEY_NODE` instead)
         #[arg(long)]
         private_key_node: Option<String>,
 
@@ -275,8 +275,8 @@ pub async fn execute_command(
                     Ok(_) => {
                         Console::warning("Pool is not active yet. Checking again in 15 seconds.");
                         tokio::select! {
-                            _ = tokio::time::sleep(tokio::time::Duration::from_secs(15)) => {},
-                            _ = cancellation_token.cancelled() => return Ok(()),
+                            () = tokio::time::sleep(tokio::time::Duration::from_secs(15)) => {},
+                            () = cancellation_token.cancelled() => return Ok(()),
                         }
                     }
                     Err(e) => {
@@ -317,7 +317,7 @@ pub async fn execute_command(
             let node_config = hardware_check.check_hardware(node_config).await.unwrap();
             let software_checker = SoftwareChecker::new(Some(issue_tracker.clone()));
             if let Err(err) = software_checker.check_software(&node_config).await {
-                Console::user_error(&format!("❌ Software check failed: {}", err));
+                Console::user_error(&format!("❌ Software check failed: {err}"));
                 std::process::exit(1);
             }
 
@@ -325,8 +325,7 @@ pub async fn execute_command(
                 if *external_ip != detected_external_ip {
                     Console::warning(
                         &format!(
-                            "Automatically detected external IP {} does not match the provided external IP {}",
-                            detected_external_ip, external_ip
+                            "Automatically detected external IP {detected_external_ip} does not match the provided external IP {external_ip}"
                         ),
                     );
                 }
@@ -421,14 +420,14 @@ pub async fn execute_command(
                     .default_signer()
                     .address()
                     .to_string(),
-                state.get_p2p_seed(),
+                state.p2p_seed(),
             ));
 
             let bridge_cancellation_token = cancellation_token.clone();
             tokio::spawn(async move {
                 let bridge_clone = task_bridge.clone();
                 tokio::select! {
-                    _ = bridge_cancellation_token.cancelled() => {
+                    () = bridge_cancellation_token.cancelled() => {
                     }
                     _ = bridge_clone.run() => {
                     }
@@ -446,11 +445,7 @@ pub async fn execute_command(
             );
 
             let gpu_count: u32 = match &node_config.compute_specs {
-                Some(specs) => specs
-                    .gpu
-                    .as_ref()
-                    .map(|gpu| gpu.count.unwrap_or(0))
-                    .unwrap_or(0),
+                Some(specs) => specs.gpu.as_ref().map_or(0, |gpu| gpu.count.unwrap_or(0)),
                 None => 0,
             };
             let compute_units = U256::from(std::cmp::max(1, gpu_count * 1000));
@@ -466,12 +461,11 @@ pub async fn execute_command(
                 }
             };
 
-            let stake_manager = match contracts.stake_manager.as_ref() {
-                Some(stake_manager) => stake_manager,
-                None => {
-                    error!("❌ Stake manager not initialized");
-                    std::process::exit(1);
-                }
+            let stake_manager = if let Some(stake_manager) = contracts.stake_manager.as_ref() {
+                stake_manager
+            } else {
+                error!("❌ Stake manager not initialized");
+                std::process::exit(1);
             };
 
             Console::title("Provider Status");
@@ -572,7 +566,7 @@ pub async fn execute_command(
                     .increase_stake(required_stake - provider_stake)
                     .await
                 {
-                    Ok(_) => {
+                    Ok(()) => {
                         Console::success("Successfully increased stake");
                     }
                     Err(e) => {
@@ -608,7 +602,7 @@ pub async fn execute_command(
             while attempts < max_attempts {
                 Console::title("📦 Uploading discovery info");
                 match discovery_service.upload_discovery_info(&node_config).await {
-                    Ok(_) => break,
+                    Ok(()) => break,
                     Err(e) => {
                         attempts += 1;
                         error!(
@@ -629,10 +623,7 @@ pub async fn execute_command(
 
             // Start monitoring compute node status on chain
             provider_ops.start_monitoring(provider_ops_cancellation);
-            if let Err(err) = compute_node_ops.start_monitoring(cancellation_token.clone()) {
-                error!("❌ Failed to start node monitoring: {}", err);
-                std::process::exit(1);
-            }
+            compute_node_ops.start_monitoring(cancellation_token.clone());
 
             // 6. Start HTTP Server to receive challenges and invites to join cluster
             Console::info(
@@ -688,13 +679,13 @@ pub async fn execute_command(
             let node_config = match hardware_checker.check_hardware(node_config).await {
                 Ok(node_config) => node_config,
                 Err(err) => {
-                    Console::user_error(&format!("❌ Hardware check failed: {}", err));
+                    Console::user_error(&format!("❌ Hardware check failed: {err}"));
                     std::process::exit(1);
                 }
             };
 
             if let Err(err) = software_checker.check_software(&node_config).await {
-                Console::user_error(&format!("❌ Software check failed: {}", err));
+                Console::user_error(&format!("❌ Software check failed: {err}"));
                 std::process::exit(1);
             }
 
@@ -717,13 +708,13 @@ pub async fn execute_command(
 
             println!("Provider wallet:");
             println!("  Address: {}", provider_signer.address());
-            println!("  Private key: {}", provider_key);
+            println!("  Private key: {provider_key}");
             println!("\nNode wallet:");
             println!("  Address: {}", node_signer.address());
-            println!("  Private key: {}", node_key);
+            println!("  Private key: {node_key}");
             println!("\nTo set environment variables in your current shell session:");
-            println!("export PRIVATE_KEY_PROVIDER={}", provider_key);
-            println!("export PRIVATE_KEY_NODE={}", node_key);
+            println!("export PRIVATE_KEY_PROVIDER={provider_key}");
+            println!("export PRIVATE_KEY_NODE={node_key}");
 
             Ok(())
         }
@@ -734,9 +725,9 @@ pub async fn execute_command(
 
             println!("Node wallet:");
             println!("  Address: {}", node_signer.address());
-            println!("  Private key: {}", node_key);
+            println!("  Private key: {node_key}");
             println!("\nTo set environment variable in your current shell session:");
-            println!("export PRIVATE_KEY_NODE={}", node_key);
+            println!("export PRIVATE_KEY_NODE={node_key}");
 
             Ok(())
         }
@@ -769,7 +760,7 @@ pub async fn execute_command(
 
             let format_balance = format!("{}", provider_balance / U256::from(10u128.pow(18)));
 
-            println!("Provider balance: {}", format_balance);
+            println!("Provider balance: {format_balance}");
             Ok(())
         }
         Commands::SignMessage {
@@ -834,7 +825,7 @@ pub async fn execute_command(
                 match Wallet::new(&private_key_provider, Url::parse(rpc_url).unwrap()) {
                     Ok(wallet) => wallet,
                     Err(err) => {
-                        Console::user_error(&format!("Failed to create wallet: {}", err));
+                        Console::user_error(&format!("Failed to create wallet: {err}"));
                         std::process::exit(1);
                     }
                 };
@@ -843,7 +834,7 @@ pub async fn execute_command(
                 match Wallet::new(&private_key_node, Url::parse(rpc_url).unwrap()) {
                     Ok(wallet) => wallet,
                     Err(err) => {
-                        Console::user_error(&format!("❌ Failed to create wallet: {}", err));
+                        Console::user_error(&format!("❌ Failed to create wallet: {err}"));
                         std::process::exit(1);
                     }
                 };
@@ -874,10 +865,7 @@ pub async fn execute_command(
             let compute_node_exists = match compute_node_ops.check_compute_node_exists().await {
                 Ok(exists) => exists,
                 Err(e) => {
-                    Console::user_error(&format!(
-                        "❌ Failed to check if compute node exists: {}",
-                        e
-                    ));
+                    Console::user_error(&format!("❌ Failed to check if compute node exists: {e}"));
                     std::process::exit(1);
                 }
             };
@@ -895,10 +883,10 @@ pub async fn execute_command(
                     .await
                 {
                     Ok(result) => {
-                        Console::success(&format!("Leave compute pool tx: {:?}", result));
+                        Console::success(&format!("Leave compute pool tx: {result:?}"));
                     }
                     Err(e) => {
-                        Console::user_error(&format!("❌ Failed to leave compute pool: {}", e));
+                        Console::user_error(&format!("❌ Failed to leave compute pool: {e}"));
                         std::process::exit(1);
                     }
                 }
@@ -906,17 +894,17 @@ pub async fn execute_command(
                     Ok(_removed_node) => {
                         Console::success("Compute node removed");
                         match provider_ops.reclaim_stake(U256::from(0)).await {
-                            Ok(_) => {
+                            Ok(()) => {
                                 Console::success("Successfully reclaimed stake");
                             }
                             Err(e) => {
-                                Console::user_error(&format!("❌ Failed to reclaim stake: {}", e));
+                                Console::user_error(&format!("❌ Failed to reclaim stake: {e}"));
                                 std::process::exit(1);
                             }
                         }
                     }
                     Err(e) => {
-                        Console::user_error(&format!("❌ Failed to remove compute node: {}", e));
+                        Console::user_error(&format!("❌ Failed to remove compute node: {e}"));
                         std::process::exit(1);
                     }
                 }

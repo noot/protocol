@@ -48,7 +48,7 @@ async fn request_upload(
         })
         .unwrap();
 
-    let rate_limit_key = format!("rate_limit:storage:upload:{}", address);
+    let rate_limit_key = format!("rate_limit:storage:upload:{address}");
     let hourly_limit = app_state.hourly_upload_limit;
 
     // Check current request count
@@ -161,8 +161,8 @@ async fn request_upload(
         }
     }
     let pattern = match &group_id {
-        Some(gid) => format!("upload:{}:{}:*", address, gid),
-        None => format!("upload:{}:no-group:*", address),
+        Some(gid) => format!("upload:{address}:{gid}:*"),
+        None => format!("upload:{address}:no-group:*"),
     };
 
     let total_uploads: Result<Vec<String>, redis::RedisError> = {
@@ -243,7 +243,7 @@ async fn request_upload(
         Ok(signed_url) => {
             // Increment rate limit counter after successful URL generation
 
-            let rate_limit_key = format!("rate_limit:storage:upload:{}", address);
+            let rate_limit_key = format!("rate_limit:storage:upload:{address}");
             let expiry_seconds = 3600; // 1 hour
 
             // Increment the counter or create it if it doesn't exist

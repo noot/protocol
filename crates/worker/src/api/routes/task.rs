@@ -31,7 +31,7 @@ async fn get_logs(app_state: Data<AppState>) -> HttpResponse {
 async fn restart_task(app_state: Data<AppState>) -> HttpResponse {
     let result = app_state.docker_service.restart_task().await;
     match result {
-        Ok(_) => HttpResponse::Ok().json(json!({
+        Ok(()) => HttpResponse::Ok().json(json!({
             "success": true,
             "message": "Task restarted successfully"
         })),

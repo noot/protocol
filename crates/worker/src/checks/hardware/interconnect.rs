@@ -12,10 +12,7 @@ impl InterconnectCheck {
         // Cloudflare's speed test endpoint is not officially documented or guaranteed
         // Consider using a more reliable speed test service or implementing our own test server
         let download_bytes = 10 * 1024 * 1024; // 10 MB
-        let download_url = format!(
-            "https://speed.cloudflare.com/__down?bytes={}",
-            download_bytes
-        );
+        let download_url = format!("https://speed.cloudflare.com/__down?bytes={download_bytes}");
         let start = Instant::now();
         let response = client.get(&download_url).send().await?;
 
@@ -56,18 +53,17 @@ impl InterconnectCheck {
         )
         .await;
 
-        let upload_speed_mbps = match upload_result {
-            Ok(response) => match response {
+        let upload_speed_mbps = if let Ok(response) = upload_result {
+            match response {
                 Ok(_) => {
                     let elapsed = start.elapsed().as_secs_f64();
                     (upload_size as f64 * 8.0) / (elapsed * 1_000_000.0)
                 }
                 Err(_) => 0.0,
-            },
-            Err(_) => {
-                println!("Upload speed test timed out after 30 seconds");
-                0.0
             }
+        } else {
+            println!("Upload speed test timed out after 30 seconds");
+            0.0
         };
 
         Ok((download_speed_mbps, upload_speed_mbps))
@@ -81,7 +77,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_speeds() {
         let result = InterconnectCheck::check_speeds().await;
-        println!("Test Result: {:?}", result);
+        println!("Test Result: {result:?}");
 
         // Verify the result is Ok and contains expected tuple structure
         assert!(result.is_ok());

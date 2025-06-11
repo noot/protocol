@@ -175,7 +175,7 @@ pub async fn register_node(
     let node_store = data.node_store.clone();
 
     match node_store.register_node(node.clone()) {
-        Ok(_) => HttpResponse::Ok().json(ApiResponse::new(true, "Node registered successfully")),
+        Ok(()) => HttpResponse::Ok().json(ApiResponse::new(true, "Node registered successfully")),
         Err(_) => HttpResponse::InternalServerError()
             .json(ApiResponse::new(false, "Internal server error")),
     }
@@ -330,7 +330,7 @@ mod tests {
         };
 
         match app_state.node_store.update_node(validated) {
-            Ok(_) => (),
+            Ok(()) => (),
             Err(_) => {
                 unreachable!("Error updating node");
             }

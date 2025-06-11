@@ -71,25 +71,25 @@ impl fmt::Display for ProcessWorkKeyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProcessWorkKeyError::FileNameResolutionError(msg) => {
-                write!(f, "File name resolution error: {}", msg)
+                write!(f, "File name resolution error: {msg}")
             }
             ProcessWorkKeyError::ValidationTriggerError(msg) => {
-                write!(f, "Validation trigger error: {}", msg)
+                write!(f, "Validation trigger error: {msg}")
             }
             ProcessWorkKeyError::ValidationPollingError(msg) => {
-                write!(f, "Validation polling error: {}", msg)
+                write!(f, "Validation polling error: {msg}")
             }
             ProcessWorkKeyError::InvalidatingWorkError(msg) => {
-                write!(f, "Invalidating work error: {}", msg)
+                write!(f, "Invalidating work error: {msg}")
             }
             ProcessWorkKeyError::MaxAttemptsReached(msg) => {
-                write!(f, "Max attempts reached: {}", msg)
+                write!(f, "Max attempts reached: {msg}")
             }
             ProcessWorkKeyError::GenericError(err) => {
-                write!(f, "Generic error: {}", err)
+                write!(f, "Generic error: {err}")
             }
             ProcessWorkKeyError::NoMatchingToplocConfig(msg) => {
-                write!(f, "No matching toploc config: {:?}", msg)
+                write!(f, "No matching toploc config: {msg:?}")
             }
         }
     }
@@ -113,11 +113,11 @@ struct GroupInformation {
 impl FromStr for GroupInformation {
     type Err = Error;
 
-    /// Parse a filename into GroupInformation
+    /// Parse a filename into `GroupInformation`
     /// Expected format: "prefix-groupid-groupsize-filenumber-idx.parquet"
     fn from_str(file_name: &str) -> Result<Self, Self::Err> {
         let re = regex::Regex::new(r".*?-([0-9a-fA-F]+)-(\d+)-(\d+)-(\d+)(\.[^.]+)$")
-            .map_err(|e| Error::msg(format!("Failed to compile regex: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to compile regex: {e}")))?;
 
         let caps = re
             .captures(file_name)
@@ -138,13 +138,13 @@ impl FromStr for GroupInformation {
             .ok_or_else(|| Error::msg("Failed to extract group size"))?
             .as_str()
             .parse::<u32>()
-            .map_err(|e| Error::msg(format!("Failed to parse group size: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to parse group size: {e}")))?;
         let filenumber = caps
             .get(3)
             .ok_or_else(|| Error::msg("Failed to extract file number"))?
             .as_str()
             .parse::<u32>()
-            .map_err(|e| Error::msg(format!("Failed to parse file number: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to parse file number: {e}")))?;
         let idx = caps
             .get(4)
             .ok_or_else(|| Error::msg("Failed to extract index"))?
@@ -281,7 +281,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
     }
 
     fn get_key_for_work_key(&self, work_key: &str) -> String {
-        format!("work_validation_status:{}", work_key)
+        format!("work_validation_status:{work_key}")
     }
 
     async fn update_work_validation_status(
@@ -309,12 +309,12 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
                     redis::SetOptions::default().with_expiration(redis::SetExpiry::EX(expiry)),
                 )
                 .await
-                .map_err(|e| Error::msg(format!("Failed to set work validation status: {}", e)))?;
+                .map_err(|e| Error::msg(format!("Failed to set work validation status: {e}")))?;
         } else {
             let _: () = con
                 .set(&key, status)
                 .await
-                .map_err(|e| Error::msg(format!("Failed to set work validation status: {}", e)))?;
+                .map_err(|e| Error::msg(format!("Failed to set work validation status: {e}")))?;
         }
         Ok(())
     }
@@ -332,12 +332,11 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
         let status: Option<String> = con
             .get(key)
             .await
-            .map_err(|e| Error::msg(format!("Failed to get work validation status: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to get work validation status: {e}")))?;
         status
             .map(|status| {
-                serde_json::from_str(&status).map_err(|e| {
-                    Error::msg(format!("Failed to parse work validation status: {}", e))
-                })
+                serde_json::from_str(&status)
+                    .map_err(|e| Error::msg(format!("Failed to parse work validation status: {e}")))
             })
             .transpose()
     }
@@ -352,12 +351,12 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
             .client
             .get_multiplexed_async_connection()
             .await?;
-        let key = format!("work_info:{}", work_key);
+        let key = format!("work_info:{work_key}");
         let work_info = serde_json::to_string(&work_info)?;
         let _: () = con
             .set(&key, work_info)
             .await
-            .map_err(|e| Error::msg(format!("Failed to set work info: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to set work info: {e}")))?;
         Ok(())
     }
 
@@ -367,15 +366,15 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
             .client
             .get_multiplexed_async_connection()
             .await?;
-        let key = format!("work_info:{}", work_key);
+        let key = format!("work_info:{work_key}");
         let work_info: Option<String> = con
             .get(&key)
             .await
-            .map_err(|e| Error::msg(format!("Failed to get work info: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to get work info: {e}")))?;
         work_info
             .map(|work_info| {
                 serde_json::from_str(&work_info)
-                    .map_err(|e| Error::msg(format!("Failed to parse work info: {}", e)))
+                    .map_err(|e| Error::msg(format!("Failed to parse work info: {e}")))
             })
             .transpose()
     }
@@ -384,7 +383,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
         &self,
         work_key: &str,
     ) -> Result<String, ProcessWorkKeyError> {
-        let redis_key = format!("file_name:{}", work_key);
+        let redis_key = format!("file_name:{work_key}");
         let mut con = self
             .redis_store
             .client
@@ -416,8 +415,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
                 metrics.record_work_key_error("file_name_resolution_failed");
             }
             return Err(ProcessWorkKeyError::FileNameResolutionError(format!(
-                "Failed to resolve original file name for work key: {}",
-                work_key
+                "Failed to resolve original file name for work key: {work_key}"
             )));
         }
 
@@ -440,7 +438,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
             .await
             .map_err(|e| {
                 error!("Failed to get file name for work key: {}", e);
-                Error::msg(format!("Failed to get file name for work key: {}", e))
+                Error::msg(format!("Failed to get file name for work key: {e}"))
             })?;
         debug!("File for work key: {:?} | {:?}", work_key, file);
         let group_info = GroupInformation::from_str(&file)?;
@@ -457,7 +455,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
         redis
             .hset::<_, _, _, ()>(&group_key, work_key, group_info.to_redis()?)
             .await
-            .map_err(|e| Error::msg(format!("Failed to set group info in Redis: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to set group info in Redis: {e}")))?;
 
         Ok(group_key)
     }
@@ -471,13 +469,13 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
         let group_size: u32 = redis
             .hlen::<_, u32>(group_key)
             .await
-            .map_err(|e| Error::msg(format!("Failed to get group size from Redis: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to get group size from Redis: {e}")))?;
         let expected_size = group_key
             .split(':')
             .nth(2)
             .ok_or_else(|| Error::msg("Failed to get group size from group key"))?
             .parse::<u32>()
-            .map_err(|e| Error::msg(format!("Failed to parse group size: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to parse group size: {e}")))?;
         Ok(group_size == expected_size)
     }
 
@@ -505,7 +503,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
             let mut entries: Vec<(String, GroupInformation)> = Vec::new();
             for (key, value) in group_entries {
                 let info = GroupInformation::from_redis(&value)
-                    .map_err(|e| Error::msg(format!("Failed to parse group info: {}", e)))?;
+                    .map_err(|e| Error::msg(format!("Failed to parse group info: {e}")))?;
                 entries.push((key, info));
             }
 
@@ -608,7 +606,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
             keys_to_process
         );
         if let Some(metrics) = &self.metrics {
-            metrics.record_work_keys_to_process(keys_to_process as f64);
+            metrics.record_work_keys_to_process(f64::from(keys_to_process));
         }
 
         Ok(ValidationPlan {
@@ -629,7 +627,7 @@ impl<P: alloy::providers::Provider + Clone> SyntheticDataValidator<P> {
             .await
             .map_err(|e| {
                 error!("Failed to get file name for work key: {}", e);
-                Error::msg(format!("Failed to get file name for work key: {}", e))
+                Error::msg(format!("Failed to get file name for work key: {e}"))
             })?;
         let toploc_config = self
             .find_matching_toploc_config(&file_name)
@@ -1040,11 +1038,11 @@ impl SyntheticDataValidator<WalletProvider> {
         };
 
         tokio::select! {
-            _ = all_tasks_future => {
+            () = all_tasks_future => {
                 info!("All validation sub-tasks completed for this cycle.");
             },
 
-            _ = cancellation_token.cancelled() => {
+            () = cancellation_token.cancelled() => {
                 warn!("Validation processing was cancelled.");
             }
         }
@@ -1060,8 +1058,7 @@ impl SyntheticDataValidator<WalletProvider> {
             .iter()
             .find(|t| t.matches_file_name(&cleaned_file_name))
             .ok_or(ProcessWorkKeyError::NoMatchingToplocConfig(format!(
-                "No matching toploc config found for {}",
-                cleaned_file_name
+                "No matching toploc config found for {cleaned_file_name}"
             )))?;
 
         let result = toploc_config
@@ -1124,7 +1121,7 @@ impl SyntheticDataValidator<WalletProvider> {
         #[cfg(not(test))]
         {
             let data = hex::decode(work_key)
-                .map_err(|e| Error::msg(format!("Failed to decode hex work key: {}", e)))?;
+                .map_err(|e| Error::msg(format!("Failed to decode hex work key: {e}")))?;
             match self
                 .prime_network
                 .invalidate_work(self.pool_id, self.penalty, data)
@@ -1133,7 +1130,7 @@ impl SyntheticDataValidator<WalletProvider> {
                 Ok(_) => Ok(()),
                 Err(e) => {
                     error!("Failed to invalidate work {}: {}", work_key, e);
-                    Err(Error::msg(format!("Failed to invalidate work: {}", e)))
+                    Err(Error::msg(format!("Failed to invalidate work: {e}")))
                 }
             }
         }
@@ -1178,7 +1175,7 @@ mod tests {
             "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97",
             url,
         )
-        .map_err(|e| Error::msg(format!("Failed to create demo wallet: {}", e)))?;
+        .map_err(|e| Error::msg(format!("Failed to create demo wallet: {e}")))?;
 
         let contracts = ContractBuilder::new(demo_wallet.provider())
             .with_compute_registry()
@@ -1189,7 +1186,7 @@ mod tests {
             .with_stake_manager()
             .with_synthetic_data_validator(Some(Address::ZERO))
             .build()
-            .map_err(|e| Error::msg(format!("Failed to build contracts: {}", e)))?;
+            .map_err(|e| Error::msg(format!("Failed to build contracts: {e}")))?;
 
         Ok((store, contracts))
     }
@@ -1326,7 +1323,7 @@ mod tests {
             .await
             .map_err(|e| {
                 error!("Failed to update work validation status: {}", e);
-                Error::msg(format!("Failed to update work validation status: {}", e))
+                Error::msg(format!("Failed to update work validation status: {e}"))
             })?;
 
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -1335,7 +1332,7 @@ mod tests {
             .await
             .map_err(|e| {
                 error!("Failed to get work validation status: {}", e);
-                Error::msg(format!("Failed to get work validation status: {}", e))
+                Error::msg(format!("Failed to get work validation status: {e}"))
             })?;
         assert_eq!(status, Some(ValidationResult::Accept));
         Ok(())
@@ -1459,12 +1456,12 @@ mod tests {
 
         let mock_storage = MockStorageProvider::new();
         mock_storage.add_file(
-            &format!("Qwen/Qwen0.6/dataset/samplingn-{}-1-0-0.parquet", group_id),
+            &format!("Qwen/Qwen0.6/dataset/samplingn-{group_id}-1-0-0.parquet"),
             "file1",
         );
         mock_storage.add_mapping_file(
             file_sha,
-            &format!("Qwen/Qwen0.6/dataset/samplingn-{}-1-0-0.parquet", group_id),
+            &format!("Qwen/Qwen0.6/dataset/samplingn-{group_id}-1-0-0.parquet"),
         );
         server
             .mock(
@@ -1478,7 +1475,7 @@ mod tests {
                 "group_size": 1
             })))
             .with_status(200)
-            .with_body(r#"ok"#)
+            .with_body(r"ok")
             .create();
         server
             .mock(
@@ -1594,20 +1591,20 @@ mod tests {
 
         let mock_storage = MockStorageProvider::new();
         mock_storage.add_file(
-            &format!("Qwen/Qwen0.6/dataset/samplingn-{}-2-0-0.parquet", group_id),
+            &format!("Qwen/Qwen0.6/dataset/samplingn-{group_id}-2-0-0.parquet"),
             "file1",
         );
         mock_storage.add_file(
-            &format!("Qwen/Qwen0.6/dataset/samplingn-{}-2-0-1.parquet", group_id),
+            &format!("Qwen/Qwen0.6/dataset/samplingn-{group_id}-2-0-1.parquet"),
             "file2",
         );
         mock_storage.add_mapping_file(
             file_sha_1,
-            &format!("Qwen/Qwen0.6/dataset/samplingn-{}-2-0-0.parquet", group_id),
+            &format!("Qwen/Qwen0.6/dataset/samplingn-{group_id}-2-0-0.parquet"),
         );
         mock_storage.add_mapping_file(
             file_sha_2,
-            &format!("Qwen/Qwen0.6/dataset/samplingn-{}-2-0-1.parquet", group_id),
+            &format!("Qwen/Qwen0.6/dataset/samplingn-{group_id}-2-0-1.parquet"),
         );
         server
             .mock(
@@ -1621,7 +1618,7 @@ mod tests {
                 "group_size": 2
             })))
             .with_status(200)
-            .with_body(r#"ok"#)
+            .with_body(r"ok")
             .create();
         server
             .mock(
@@ -1715,7 +1712,7 @@ mod tests {
         let result = validator
             .process_group_status_check(plan_2.group_status_check_tasks[0].clone())
             .await;
-        println!("result: {:?}", result);
+        println!("result: {result:?}");
         assert!(result.is_ok());
 
         // Node 1 should be accepted (exact claim)
@@ -1734,7 +1731,7 @@ mod tests {
         assert_eq!(plan_3.group_trigger_tasks.len(), 0);
         assert_eq!(plan_3.group_status_check_tasks.len(), 0);
         let metrics_2 = export_metrics().unwrap();
-        println!("metrics_2: {}", metrics_2);
+        println!("metrics_2: {metrics_2}");
         assert!(metrics_2
             .contains("validator_work_keys_to_process{pool_id=\"0\",validator_id=\"0\"} 0"));
         assert!(metrics_2.contains("toploc_config_name=\"Qwen/Qwen0.6\""));

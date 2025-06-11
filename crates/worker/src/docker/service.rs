@@ -23,7 +23,7 @@ pub struct DockerService {
     system_memory_mb: Option<u32>,
     task_bridge_socket_path: String,
     node_address: String,
-    p2p_seed: Option<u64>,
+    p2p_seed: u64,
 }
 
 const TASK_PREFIX: &str = "prime-task";
@@ -39,7 +39,7 @@ impl DockerService {
         task_bridge_socket_path: String,
         storage_path: Option<String>,
         node_address: String,
-        p2p_seed: Option<u64>,
+        p2p_seed: u64,
     ) -> Self {
         let docker_manager = Arc::new(DockerManager::new(storage_path).unwrap());
         Self {
@@ -89,7 +89,7 @@ impl DockerService {
 
         loop {
             tokio::select! {
-                _ = cancellation_token.cancelled() => {
+                () = cancellation_token.cancelled() => {
                     cleanup_tasks(&starting_container_tasks).await;
                     cleanup_tasks(&terminating_container_tasks).await;
                     break;
@@ -131,7 +131,7 @@ impl DockerService {
                             let handle = tokio::spawn(async move {
                                 let termination = terminate_manager_clone.remove_container(&task.id).await;
                                 match termination {
-                                    Ok(_) => Console::info("DockerService", "Container terminated successfully"),
+                                    Ok(()) => Console::info("DockerService", "Container terminated successfully"),
                                     Err(e) => log::error!("Error terminating container: {}", e),
                                 }
                             });
@@ -141,7 +141,7 @@ impl DockerService {
 
                     if current_task.is_some() && task_id.is_some() {
                         let container_task_id = format!("{}-{}", TASK_PREFIX, current_task.unwrap().id);
-                        let container_match = all_containers.iter().find(|c| c.names.contains(&format!("/{}", container_task_id)));
+                        let container_match = all_containers.iter().find(|c| c.names.contains(&format!("/{container_task_id}")));
                         if container_match.is_none() {
                             let running_tasks = starting_container_tasks.lock().await;
                             let has_running_tasks = running_tasks.iter().any(|h| !h.is_finished());
@@ -171,7 +171,7 @@ impl DockerService {
                                     Console::info("DockerService", &format!("Waiting before starting new container ({}s remaining)...", backoff_seconds - elapsed));
                                 } else {
                                     if consecutive_failures > 0 {
-                                        Console::info("DockerService", &format!("Starting new container after {} failures...", consecutive_failures));
+                                        Console::info("DockerService", &format!("Starting new container after {consecutive_failures} failures..."));
                                     } else {
                                         Console::info("DockerService", "Starting new container...");
                                     }
@@ -194,12 +194,9 @@ impl DockerService {
                                             (Some(c), Some(a)) => {
                                                 let mut cmd = vec![c];
                                                 cmd.extend(a.into_iter().map(|arg| {
-                                                    if let Some(seed) = p2p_seed {
-                                                        arg.replace("${WORKER_P2P_SEED}", &seed.to_string())
-                                                    } else {
-                                                        arg
-                                                    }
-                                                }));
+                                                        arg.replace("${WORKER_P2P_SEED}", &p2p_seed.to_string())
+                                                    })
+                                                );
                                                 cmd
                                             }
                                             (Some(c), None) => vec![c],
@@ -214,9 +211,8 @@ impl DockerService {
                                         env_vars.insert("NODE_ADDRESS".to_string(), node_address);
                                         env_vars.insert("PRIME_SOCKET_PATH".to_string(), task_bridge_socket_path.to_string());
                                         env_vars.insert("PRIME_TASK_ID".to_string(), payload.id.to_string());
-                                        if let Some(p2p_seed) = p2p_seed {
-                                            env_vars.insert("IROH_SEED".to_string(), p2p_seed.to_string());
-                                        }
+                                        env_vars.insert("IROH_SEED".to_string(), p2p_seed.to_string());
+
                                         let volumes = vec![
                                             (
                                                 Path::new(&task_bridge_socket_path).parent().unwrap().to_path_buf().to_string_lossy().to_string(),
@@ -224,16 +220,13 @@ impl DockerService {
                                                 false,
                                             )
                                         ];
-                                        let shm_size = match system_memory_mb {
-                                            Some(mem_mb) => (mem_mb as u64) * 1024 * 1024 / 2, // Convert MB to bytes and divide by 2
-                                            None => {
-                                                Console::warning("System memory not available, using default shm size");
-                                                67108864 // Default to 64MB in bytes
-                                            }
+                                        let shm_size = if let Some(mem_mb) = system_memory_mb { u64::from(mem_mb) * 1024 * 1024 / 2 } else {
+                                            Console::warning("System memory not available, using default shm size");
+                                            67108864 // Default to 64MB in bytes
                                         };
                                         match manager_clone.start_container(&payload.image, &container_task_id, Some(env_vars), Some(cmd), gpu, Some(volumes), Some(shm_size)).await {
                                             Ok(container_id) => {
-                                                Console::info("DockerService", &format!("Container started with id: {}", container_id));
+                                                Console::info("DockerService", &format!("Container started with id: {container_id}"));
                                             },
                                             Err(e) => {
                                                 log::error!("Error starting container: {}", e);
@@ -257,12 +250,9 @@ impl DockerService {
                                 }
                             };
 
-                            let task_state_current = match task_state_clone.get_current_task().await {
-                                Some(task) => task.state,
-                                None => {
-                                    log::error!("No task found in state");
-                                    continue;
-                                }
+                            let task_state_current = if let Some(task) = task_state_clone.get_current_task().await { task.state } else {
+                                log::error!("No task found in state");
+                                continue;
                             };
                             // handle edge case where container instantly dies due to invalid command
                             if status.status == Some(ContainerStateStatusEnum::CREATED) && task_state_current == TaskState::FAILED {
@@ -283,18 +273,18 @@ impl DockerService {
 
                                 // Only log if state changed
                                 if task_state_live != task_state_current {
-                                    Console::info("DockerService", &format!("Task state changed from {:?} to {:?}", task_state_current, task_state_live));
+                                    Console::info("DockerService", &format!("Task state changed from {task_state_current:?} to {task_state_live:?}"));
 
                                     if task_state_live == TaskState::FAILED {
 
                                         consecutive_failures += 1;
-                                        Console::info("DockerService", &format!("Task failed (attempt {}), waiting with exponential backoff before restart", consecutive_failures));
+                                        Console::info("DockerService", &format!("Task failed (attempt {consecutive_failures}), waiting with exponential backoff before restart"));
 
                                         let terminate_manager_clone = terminate_manager.clone();
                                         let handle = tokio::spawn(async move {
                                             let termination = terminate_manager_clone.remove_container(&container_status.id).await;
                                             match termination {
-                                                Ok(_) => Console::info("DockerService", "Container terminated successfully"),
+                                                Ok(()) => Console::info("DockerService", "Container terminated successfully"),
                                                 Err(e) => log::error!("Error terminating container: {}", e)
                                             }
                                         });
@@ -368,7 +358,7 @@ mod tests {
             "/tmp/com.prime.miner/metrics.sock".to_string(),
             None,
             Address::ZERO.to_string(),
-            None,
+            0,
         );
         let task = Task {
             image: "ubuntu:latest".to_string(),

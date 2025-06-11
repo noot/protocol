@@ -1,7 +1,6 @@
 use iroh::SecretKey;
 use rand_v8::Rng;
 use rand_v8::{rngs::StdRng, SeedableRng};
-use std::error::Error;
 
 /// Generate a random seed
 pub fn generate_random_seed() -> u64 {
@@ -9,7 +8,7 @@ pub fn generate_random_seed() -> u64 {
 }
 
 // Generate an Iroh node ID from a seed
-pub fn generate_iroh_node_id_from_seed(seed: u64) -> Result<String, Box<dyn Error>> {
+pub fn generate_iroh_node_id_from_seed(seed: u64) -> String {
     // Create a deterministic RNG from the seed
     let mut rng = StdRng::seed_from_u64(seed);
 
@@ -20,7 +19,7 @@ pub fn generate_iroh_node_id_from_seed(seed: u64) -> Result<String, Box<dyn Erro
     // Get the node ID (public key) as a string
     let node_id = secret_key.public().to_string();
 
-    Ok(node_id)
+    node_id
 }
 
 #[cfg(test)]
@@ -38,7 +37,7 @@ mod tests {
     #[test]
     fn test_known_generation() {
         let seed: u32 = 848364385;
-        let result = generate_iroh_node_id_from_seed(seed as u64).unwrap();
+        let result = generate_iroh_node_id_from_seed(u64::from(seed));
         assert_eq!(
             result,
             "6ba970180efbd83909282ac741085431f54aa516e1783852978bd529a400d0e9"
@@ -50,10 +49,10 @@ mod tests {
     fn test_deterministic_generation() {
         // Same seed should generate same node_id
         let seed = generate_random_seed();
-        println!("seed: {}", seed);
-        let result1 = generate_iroh_node_id_from_seed(seed).unwrap();
-        let result2 = generate_iroh_node_id_from_seed(seed).unwrap();
-        println!("result1: {}", result1);
+        println!("seed: {seed}");
+        let result1 = generate_iroh_node_id_from_seed(seed);
+        let result2 = generate_iroh_node_id_from_seed(seed);
+        println!("result1: {result1}");
 
         assert_eq!(result1, result2);
     }

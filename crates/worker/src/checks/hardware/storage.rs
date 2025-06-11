@@ -22,7 +22,7 @@ pub fn get_storage_info() -> Result<(f64, f64), std::io::Error> {
     let current_dir = env::current_dir()?;
     let path_str = current_dir.to_string_lossy();
 
-    if unsafe { libc::statvfs(path_str.as_ptr() as *const i8, &mut stat) } != 0 {
+    if unsafe { libc::statvfs(path_str.as_ptr().cast::<i8>(), &mut stat) } != 0 {
         return Err(std::io::Error::last_os_error());
     }
 
@@ -132,8 +132,8 @@ pub fn print_storage_info() {
     match get_storage_info() {
         Ok((total, free)) => {
             Console::title("Storage Information:");
-            Console::info("Total Storage", &format!("{:.1} GB", total));
-            Console::info("Free Storage", &format!("{:.1} GB", free));
+            Console::info("Total Storage", &format!("{total:.1} GB"));
+            Console::info("Free Storage", &format!("{free:.1} GB"));
         }
         Err(e) => log::error!("Storage Error: {}", e),
     }

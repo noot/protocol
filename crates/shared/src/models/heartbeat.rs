@@ -30,5 +30,5 @@ pub struct HeartbeatRequest {
     pub version: Option<String>,
     pub timestamp: Option<u64>,
     #[serde(default)]
-    pub p2p_id: Option<String>,
+    pub p2p_id: String,
 }

@@ -50,15 +50,13 @@ async fn heartbeat(
         error!("Error updating node task: {}", e);
     }
 
-    if let Some(p2p_id) = &heartbeat.p2p_id {
-        if let Err(e) = app_state
-            .store_context
-            .node_store
-            .update_node_p2p_id(&node_address, p2p_id)
-            .await
-        {
-            error!("Error updating node p2p id: {}", e);
-        }
+    if let Err(e) = app_state
+        .store_context
+        .node_store
+        .update_node_p2p_id(&node_address, &heartbeat.p2p_id)
+        .await
+    {
+        error!("Error updating node p2p id: {}", e);
     }
 
     if let Err(e) = app_state
@@ -242,7 +240,7 @@ mod tests {
                 ]),
                 version: None,
                 timestamp: None,
-                p2p_id: None,
+                p2p_id: "test_p2p_id".to_string(),
             })
         );
 
@@ -336,7 +334,7 @@ mod tests {
 
         let task = match task.try_into() {
             Ok(task) => task,
-            Err(e) => panic!("Failed to convert TaskRequest to Task: {}", e),
+            Err(e) => panic!("Failed to convert TaskRequest to Task: {e}"),
         };
         let _ = app_state.store_context.task_store.add_task(task).await;
 

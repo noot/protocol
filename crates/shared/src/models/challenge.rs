@@ -39,7 +39,7 @@ impl<'de> Deserialize<'de> for FixedF64 {
                 value
                     .parse::<f64>()
                     .map(FixedF64)
-                    .map_err(|_| E::custom(format!("invalid f64: {}", value)))
+                    .map_err(|_| E::custom(format!("invalid f64: {value}")))
             }
         }
 
@@ -71,6 +71,7 @@ pub struct ChallengeResponse {
     pub cols: usize,
 }
 
+#[must_use]
 pub fn calc_matrix(req: &ChallengeRequest) -> ChallengeResponse {
     // convert FixedF64 to f64
     let data_a: Vec<f64> = req.data_a.iter().map(|x| x.0).collect();

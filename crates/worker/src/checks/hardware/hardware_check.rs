@@ -100,25 +100,22 @@ impl HardwareChecker {
         // Check network speeds
         Console::title("Network Speed Test:");
         Console::progress("Starting network speed test...");
-        match InterconnectCheck::check_speeds().await {
-            Ok((download_speed, upload_speed)) => {
-                Console::info("Download Speed", &format!("{:.2} Mbps", download_speed));
-                Console::info("Upload Speed", &format!("{:.2} Mbps", upload_speed));
+        if let Ok((download_speed, upload_speed)) = InterconnectCheck::check_speeds().await {
+            Console::info("Download Speed", &format!("{download_speed:.2} Mbps"));
+            Console::info("Upload Speed", &format!("{upload_speed:.2} Mbps"));
 
-                if download_speed < 50.0 || upload_speed < 50.0 {
-                    issue_tracker.add_issue(
-                        IssueType::NetworkConnectivityIssue,
-                        "Network speed below recommended 50Mbps",
-                    );
-                }
-            }
-            Err(_) => {
+            if download_speed < 50.0 || upload_speed < 50.0 {
                 issue_tracker.add_issue(
                     IssueType::NetworkConnectivityIssue,
-                    "Failed to perform network speed test",
+                    "Network speed below recommended 50Mbps",
                 );
-                Console::warning("Failed to perform network speed test");
             }
+        } else {
+            issue_tracker.add_issue(
+                IssueType::NetworkConnectivityIssue,
+                "Failed to perform network speed test",
+            );
+            Console::warning("Failed to perform network speed test");
         }
 
         node_config.compute_specs = Some(ComputeSpecs {
@@ -184,7 +181,7 @@ impl HardwareChecker {
             // Print Storage Info
             if let Some(storage_gb) = &compute_specs.storage_gb {
                 Console::title("Storage Information:");
-                Console::info("Total Storage", &format!("{} GB", storage_gb));
+                Console::info("Total Storage", &format!("{storage_gb} GB"));
             }
             if let Some(storage_path) = &compute_specs.storage_path {
                 Console::info("Storage Path for docker mounts", storage_path);
@@ -202,11 +199,11 @@ impl HardwareChecker {
                 );
                 // Convert memory from MB to GB and round
                 let memory_gb = if let Some(memory_mb) = gpu.memory_mb {
-                    memory_mb as f64 / 1024.0
+                    f64::from(memory_mb) / 1024.0
                 } else {
                     0.0
                 };
-                Console::info("Memory", &format!("{:.0} GB", memory_gb));
+                Console::info("Memory", &format!("{memory_gb:.0} GB"));
             }
         } else {
             Console::warning("No compute specs available");

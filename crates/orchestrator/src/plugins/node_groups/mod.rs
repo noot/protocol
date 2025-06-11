@@ -86,12 +86,11 @@ impl NodeGroupsPlugin {
 
         let mut seen_names = HashSet::new();
         for config in &sorted_configs {
-            if !seen_names.insert(config.name.clone()) {
-                panic!("Configuration names must be unique");
-            }
-            if !config.is_valid() {
-                panic!("Plugin configuration is invalid");
-            }
+            assert!(
+                seen_names.insert(config.name.clone()),
+                "Configuration names must be unique"
+            );
+            assert!(config.is_valid(), "Plugin configuration is invalid");
         }
 
         sorted_configs.sort_by(|a, b| b.min_group_size.cmp(&a.min_group_size));
@@ -119,7 +118,7 @@ impl NodeGroupsPlugin {
     }
 
     fn get_group_key(group_id: &str) -> String {
-        format!("{}{}", GROUP_KEY_PREFIX, group_id)
+        format!("{GROUP_KEY_PREFIX}{group_id}")
     }
 
     pub async fn get_node_group(&self, node_addr: &str) -> Result<Option<NodeGroup>, Error> {
@@ -191,7 +190,7 @@ impl NodeGroupsPlugin {
 
     async fn get_current_group_task(&self, group_id: &str) -> Result<Option<Task>, Error> {
         let mut conn = self.store.client.get_multiplexed_async_connection().await?;
-        let task_key = format!("{}{}", GROUP_TASK_KEY_PREFIX, group_id);
+        let task_key = format!("{GROUP_TASK_KEY_PREFIX}{group_id}");
         let task_id: Option<String> = conn.get(&task_key).await?;
 
         if let Some(task_id) = task_id {
@@ -201,7 +200,7 @@ impl NodeGroupsPlugin {
 
             warn!("Task id set but task not found");
             let script = Script::new(
-                r#"
+                r"
             local task_key = KEYS[1]
             local expected_task_id = ARGV[1]
             
@@ -212,7 +211,7 @@ impl NodeGroupsPlugin {
             else
                 return 0
             end
-        "#,
+        ",
             );
 
             let _: () = script
@@ -226,7 +225,7 @@ impl NodeGroupsPlugin {
 
     async fn assign_task_to_group(&self, group_id: &str, task_id: &str) -> Result<bool, Error> {
         let mut conn = self.store.client.get_multiplexed_async_connection().await?;
-        let task_key = format!("{}{}", GROUP_TASK_KEY_PREFIX, group_id);
+        let task_key = format!("{GROUP_TASK_KEY_PREFIX}{group_id}");
         let result: bool = conn.set_nx::<_, _, bool>(&task_key, task_id).await?;
         Ok(result)
     }
@@ -287,7 +286,7 @@ impl NodeGroupsPlugin {
                     }
                 }
 
-                println!("Available nodes: {:?}", available_nodes);
+                println!("Available nodes: {available_nodes:?}");
                 // Not enough nodes to form a group
                 if available_nodes.len() < config.min_group_size {
                     break;
@@ -353,7 +352,7 @@ impl NodeGroupsPlugin {
         let webhook_groups = formed_groups.clone();
         for group in webhook_groups {
             if let Some(plugins) = &self.webhook_plugins {
-                for plugin in plugins.iter() {
+                for plugin in plugins {
                     let group_clone = group.clone();
                     let plugin_clone = plugin.clone();
                     tokio::spawn(async move {
@@ -426,7 +425,7 @@ impl NodeGroupsPlugin {
                 group.nodes.len()
             );
             if let Some(plugins) = &self.webhook_plugins {
-                for plugin in plugins.iter() {
+                for plugin in plugins {
                     let plugin_clone = plugin.clone();
                     let group_clone = group.clone();
                     tokio::spawn(async move {
@@ -457,7 +456,10 @@ impl NodeGroupsPlugin {
                 if let Some(node_groups) = plugins.get("node_groups") {
                     if let Some(allowed_topologies) = node_groups.get("allowed_topologies") {
                         debug!("Found allowed topologies: {:?}", allowed_topologies);
-                        return Ok(allowed_topologies.iter().map(|t| t.to_string()).collect());
+                        return Ok(allowed_topologies
+                            .iter()
+                            .map(std::string::ToString::to_string)
+                            .collect());
                     }
                 }
             }
@@ -489,7 +491,7 @@ impl NodeGroupsPlugin {
         debug!("Getting all groups for topology: {}", topology);
         let mut conn = self.store.client.get_multiplexed_async_connection().await?;
 
-        let pattern = format!("{}*", GROUP_KEY_PREFIX);
+        let pattern = format!("{GROUP_KEY_PREFIX}*");
         let group_keys: Vec<String> = conn.keys(&pattern).await?;
         debug!("Found {} potential group keys", group_keys.len());
 
@@ -511,7 +513,7 @@ impl NodeGroupsPlugin {
         debug!("Getting all groups");
         let mut conn = self.store.client.get_multiplexed_async_connection().await?;
 
-        let pattern = format!("{}*", GROUP_KEY_PREFIX);
+        let pattern = format!("{GROUP_KEY_PREFIX}*");
         let group_keys: Vec<String> = conn.keys(&pattern).await?;
         debug!("Found {} potential group keys", group_keys.len());
 

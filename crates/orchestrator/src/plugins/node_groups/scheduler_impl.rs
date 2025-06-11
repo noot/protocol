@@ -140,7 +140,7 @@ impl SchedulerPlugin for NodeGroupsPlugin {
 
                 let mut env_vars = task_clone.env_vars.unwrap_or_default();
                 env_vars.insert("GROUP_INDEX".to_string(), idx.to_string());
-                for (_, value) in env_vars.iter_mut() {
+                for value in env_vars.values_mut() {
                     let new_value = value
                         .replace("${GROUP_INDEX}", &idx.to_string())
                         .replace("${GROUP_SIZE}", &group.nodes.len().to_string())

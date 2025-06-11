@@ -68,15 +68,15 @@ impl fmt::Display for ComputeRequirements {
         }
 
         if let Some(cpu) = &self.cpu {
-            writeln!(f, "CPU: {}", cpu)?;
+            writeln!(f, "CPU: {cpu}")?;
         }
 
         if let Some(ram) = self.ram_mb {
-            writeln!(f, "RAM: {} MB", ram)?;
+            writeln!(f, "RAM: {ram} MB")?;
         }
 
         if let Some(storage) = self.storage_gb {
-            writeln!(f, "Storage: {} GB", storage)?;
+            writeln!(f, "Storage: {storage} GB")?;
         }
 
         Ok(())
@@ -88,15 +88,15 @@ impl fmt::Display for GpuRequirements {
         let mut parts = Vec::new();
 
         if let Some(count) = self.count {
-            parts.push(format!("{} GPU(s)", count));
+            parts.push(format!("{count} GPU(s)"));
         }
 
         if let Some(model) = &self.model {
-            parts.push(format!("Model: {}", model));
+            parts.push(format!("Model: {model}"));
         }
 
         if let Some(memory) = self.memory_mb {
-            parts.push(format!("Memory: {} MB", memory));
+            parts.push(format!("Memory: {memory} MB"));
         }
 
         if parts.is_empty() {
@@ -112,15 +112,15 @@ impl fmt::Display for GpuSpecs {
         let mut parts = Vec::new();
 
         if let Some(count) = self.count {
-            parts.push(format!("{} GPU(s)", count));
+            parts.push(format!("{count} GPU(s)"));
         }
 
         if let Some(model) = &self.model {
-            parts.push(format!("Model: {}", model));
+            parts.push(format!("Model: {model}"));
         }
 
         if let Some(memory) = self.memory_mb {
-            parts.push(format!("Memory: {} MB", memory));
+            parts.push(format!("Memory: {memory} MB"));
         }
 
         if parts.is_empty() {
@@ -142,11 +142,11 @@ impl fmt::Display for CpuSpecs {
         let mut parts = Vec::new();
 
         if let Some(cores) = self.cores {
-            parts.push(format!("{} cores", cores));
+            parts.push(format!("{cores} cores"));
         }
 
         if let Some(model) = &self.model {
-            parts.push(format!("Model: {}", model));
+            parts.push(format!("Model: {model}"));
         }
 
         if parts.is_empty() {
@@ -160,6 +160,7 @@ impl fmt::Display for CpuSpecs {
 // Parser for compute requirements string
 impl FromStr for ComputeRequirements {
     type Err = anyhow::Error;
+    #[allow(clippy::too_many_lines)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut requirements = ComputeRequirements::default();
         let mut current_gpu_spec = GpuRequirements::default();
@@ -357,6 +358,7 @@ use log::{debug, info};
 
 impl ComputeSpecs {
     /// Checks if the current compute specs meet the given requirements.
+    #[must_use]
     pub fn meets(&self, requirements: &ComputeRequirements) -> bool {
         // Check CPU (if required)
         if let Some(req_cpu) = &requirements.cpu {
@@ -522,6 +524,7 @@ impl CpuSpecs {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[allow(clippy::module_name_repetitions, clippy::struct_excessive_bools)]
 pub struct DiscoveryNode {
     #[serde(flatten)]
     pub node: Node,
@@ -538,6 +541,7 @@ pub struct DiscoveryNode {
 }
 
 impl DiscoveryNode {
+    #[must_use]
     pub fn with_updated_node(&self, new_node: Node) -> Self {
         DiscoveryNode {
             node: new_node,
@@ -629,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_requirements_parser_gpu_or_logic() {
-        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=4;gpu:model=H100;gpu:memory_mb=80000 ; ram_mb=128000; storage_gb=1000";
+        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=4;gpu:model=H100;gpu:memory_mb=80000 ; ram_mb=128_000; storage_gb=1000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
 
         assert_eq!(requirements.gpu.len(), 2);
@@ -644,20 +648,20 @@ mod tests {
         assert_eq!(requirements.gpu[1].model, Some("H100".to_string()));
         // Memory wasn't repeated for the second option in the *string*, parser should pick it up if specified like gpu:count=4;gpu:model=H100;gpu:memory_mb=80000
         // Let's re-run with memory specified for the second option
-        let req_str_mem_repeat = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=4;gpu:model=H100;gpu:memory_mb=80000 ; ram_mb=128000; storage_gb=1000";
+        let req_str_mem_repeat = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=4;gpu:model=H100;gpu:memory_mb=80000 ; ram_mb=128_000; storage_gb=1000";
         let requirements_mem_repeat = ComputeRequirements::from_str(req_str_mem_repeat).unwrap();
         assert_eq!(requirements_mem_repeat.gpu.len(), 2);
         assert_eq!(requirements_mem_repeat.gpu[1].memory_mb, Some(80000));
 
         // Common requirements
-        assert_eq!(requirements.ram_mb, Some(128000));
+        assert_eq!(requirements.ram_mb, Some(128_000));
         assert_eq!(requirements.storage_gb, Some(1000));
     }
 
     #[test]
     fn test_requirements_parser_gpu_minimal() {
         // Only specify count for the second option
-        let req_str = "gpu:count=8;gpu:model=H100 ; gpu:count=16; ram_mb=128000";
+        let req_str = "gpu:count=8;gpu:model=H100 ; gpu:count=16; ram_mb=128_000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
 
         assert_eq!(requirements.gpu.len(), 2);
@@ -669,7 +673,7 @@ mod tests {
         assert!(requirements.gpu[1].model.is_none()); // No model specified for second
         assert!(requirements.gpu[1].memory_mb.is_none()); // No memory specified for second
 
-        assert_eq!(requirements.ram_mb, Some(128000));
+        assert_eq!(requirements.ram_mb, Some(128_000));
     }
 
     #[test]
@@ -729,7 +733,7 @@ mod tests {
             Some("NVIDIA A100 80GB"),
             Some(80000),
             Some(32),
-            Some(128000),
+            Some(128_000),
             Some(1000),
         );
         // Requirements are lower
@@ -791,11 +795,11 @@ mod tests {
             Some("NVIDIA H100"),
             Some(80000),
             Some(64),
-            Some(256000),
+            Some(256_000),
             Some(2000),
         );
         // Requirements allow 8x H100 OR 16x A100
-        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=16;gpu:model=A100;gpu:memory_mb=80000 ; ram_mb=128000; storage_gb=1000";
+        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=16;gpu:model=A100;gpu:memory_mb=80000 ; ram_mb=128_000; storage_gb=1000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
         assert!(specs.meets(&requirements)); // Should meet the first GPU option
     }
@@ -808,11 +812,11 @@ mod tests {
             Some("NVIDIA A100"),
             Some(80000),
             Some(64),
-            Some(256000),
+            Some(256_000),
             Some(2000),
         );
         // Requirements allow 8x H100 OR 16x A100
-        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=16;gpu:model=A100;gpu:memory_mb=80000 ; ram_mb=128000; storage_gb=1000";
+        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=16;gpu:model=A100;gpu:memory_mb=80000 ; ram_mb=128_000; storage_gb=1000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
         assert!(specs.meets(&requirements)); // Should meet the second GPU option
     }
@@ -825,11 +829,11 @@ mod tests {
             Some("NVIDIA A100"),
             Some(80000),
             Some(64),
-            Some(256000),
+            Some(256_000),
             Some(2000),
         );
         // Requirements allow 8x H100 OR 16x A100
-        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=16;gpu:model=A100;gpu:memory_mb=80000 ; ram_mb=128000; storage_gb=1000";
+        let req_str = "gpu:count=8;gpu:model=H100;gpu:memory_mb=80000 ; gpu:count=16;gpu:model=A100;gpu:memory_mb=80000 ; ram_mb=128_000; storage_gb=1000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
         assert!(!specs.meets(&requirements)); // Fails both GPU options (count is too low)
     }
@@ -873,11 +877,11 @@ mod tests {
             Some("NVIDIA H100"),
             Some(80000),
             Some(64),
-            Some(256000),
+            Some(256_000),
             Some(2000),
         );
         // Requirements only specify GPU count and RAM (model/memory are optional)
-        let req_str = "gpu:count=4; ram_mb=128000";
+        let req_str = "gpu:count=4; ram_mb=128_000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
         assert_eq!(requirements.gpu.len(), 1);
         assert!(requirements.gpu[0].model.is_none());
@@ -1049,15 +1053,15 @@ mod tests {
     #[test]
     fn test_total_memory_parsing() {
         let req_str =
-            "gpu:count=4;gpu:model=A100;gpu:total_memory_min=160000;gpu:total_memory_max=320000";
+            "gpu:count=4;gpu:model=A100;gpu:total_memory_min=160_000;gpu:total_memory_max=320_000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
 
         assert_eq!(requirements.gpu.len(), 1);
         let gpu_req = &requirements.gpu[0];
         assert_eq!(gpu_req.count, Some(4));
         assert_eq!(gpu_req.model, Some("A100".to_string()));
-        assert_eq!(gpu_req.total_memory_min, Some(160000));
-        assert_eq!(gpu_req.total_memory_max, Some(320000));
+        assert_eq!(gpu_req.total_memory_min, Some(160_000));
+        assert_eq!(gpu_req.total_memory_max, Some(320_000));
     }
 
     #[test]
@@ -1104,7 +1108,7 @@ mod tests {
 
         // Test case 4: Exact total memory match
         let req_str =
-            "gpu:count=4;gpu:model=A100;gpu:total_memory_min=160000;gpu:total_memory_max=160000";
+            "gpu:count=4;gpu:model=A100;gpu:total_memory_min=160_000;gpu:total_memory_max=160_000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
         assert!(
             specs.meets(&requirements),
@@ -1157,7 +1161,7 @@ mod tests {
             create_compute_specs(Some(8), Some("NVIDIA H100"), Some(80000), None, None, None);
 
         // Requirements: (4x A100 with 160GB total) OR (8x H100 with 500GB+ total)
-        let req_str = "gpu:count=4;gpu:model=A100;gpu:total_memory_min=160000;gpu:count=8;gpu:model=H100;gpu:total_memory_min=500000";
+        let req_str = "gpu:count=4;gpu:model=A100;gpu:total_memory_min=160_000;gpu:count=8;gpu:model=H100;gpu:total_memory_min=500_000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
 
         assert_eq!(requirements.gpu.len(), 2);
@@ -1173,7 +1177,7 @@ mod tests {
         let specs = create_compute_specs(Some(2), Some("RTX 4090"), Some(24000), None, None, None);
 
         // Requirements allow multiple options with different total memory requirements
-        let req_str = "gpu:count=8;gpu:model=H100;gpu:total_memory_min=600000;gpu:count=4;gpu:model=A100;gpu:total_memory_min=160000;gpu:count=2;gpu:model=RTX4090;gpu:total_memory_min=40000;gpu:total_memory_max=60000";
+        let req_str = "gpu:count=8;gpu:model=H100;gpu:total_memory_min=600_000;gpu:count=4;gpu:model=A100;gpu:total_memory_min=160_000;gpu:count=2;gpu:model=RTX4090;gpu:total_memory_min=40000;gpu:total_memory_max=60000";
         let requirements = ComputeRequirements::from_str(req_str).unwrap();
 
         assert_eq!(requirements.gpu.len(), 3);

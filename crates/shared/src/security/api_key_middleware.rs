@@ -11,6 +11,7 @@ pub struct ApiKeyMiddleware {
 }
 
 impl ApiKeyMiddleware {
+    #[must_use]
     pub fn new(api_key: String) -> Self {
         Self { api_key }
     }
@@ -59,8 +60,8 @@ where
                 if auth_str.to_lowercase() == format!("bearer {}", self.api_key) {
                     let fut = self.service.call(req);
                     return Box::pin(async move {
-                        let res = fut.await?;
-                        Ok(res)
+                        let response = fut.await?;
+                        Ok(response)
                     });
                 }
             }

@@ -3,7 +3,6 @@ use alloy::providers::RootProvider;
 use clap::Parser;
 use eyre::Result;
 use shared::web3::contracts::core::builder::ContractBuilder;
-use shared::web3::wallet::Wallet;
 use std::str::FromStr;
 use url::Url;
 
@@ -56,9 +55,6 @@ async fn main() -> Result<()> {
         .await
         .unwrap();
 
-    println!(
-        "Node Active: {}, Validated: {}, In Pool: {}",
-        active, validated, is_node_in_pool
-    );
+    println!("Node Active: {active}, Validated: {validated}, In Pool: {is_node_in_pool}");
     Ok(())
 }

@@ -20,7 +20,7 @@ pub mod contract_addresses {
 
 #[cfg(feature = "testnet")]
 pub mod contract_addresses {
-    use super::*;
+    use super::{hex, Address};
     pub const PRIME_NETWORK_ADDRESS: Address =
         Address::new(hex!("0x1B831318291C3C3eEd5D2f3377A3Cfe95Fb53c34"));
     pub const AI_TOKEN_ADDRESS: Address =

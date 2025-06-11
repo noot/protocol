@@ -112,7 +112,7 @@ impl<'a> NodeInviter<'a> {
     async fn _send_invite(&self, node: &OrchestratorNode) -> Result<(), anyhow::Error> {
         let node_url = format!("http://{}:{}", node.ip_address, node.port);
         let invite_path = "/invite".to_string();
-        let invite_url = format!("{}{}", node_url, invite_path);
+        let invite_url = format!("{node_url}{invite_path}");
 
         // Generate random nonce and expiration
         let nonce: [u8; 32] = rand::random();
@@ -129,9 +129,9 @@ impl<'a> NodeInviter<'a> {
         let payload = InviteRequest {
             invite: hex::encode(invite_signature),
             pool_id: self.pool_id,
-            master_url: self.url.map(|u| u.to_string()),
+            master_url: self.url.map(std::string::ToString::to_string),
             master_ip: if self.url.is_none() {
-                self.host.map(|h| h.to_string())
+                self.host.map(std::string::ToString::to_string)
             } else {
                 None
             },
@@ -201,7 +201,7 @@ impl<'a> NodeInviter<'a> {
                 } else {
                     let response_text = match response.text().await {
                         Ok(text) => text,
-                        Err(e) => format!("Failed to get response text: {}", e),
+                        Err(e) => format!("Failed to get response text: {e}"),
                     };
                     warn!(
                         "Received non-success status: {:?}. Response: {}",
@@ -227,7 +227,7 @@ impl<'a> NodeInviter<'a> {
         let invited_nodes = stream::iter(nodes.into_iter().map(|node| async move {
             info!("Processing node {:?}", node.address);
             match self._send_invite(&node).await {
-                Ok(_) => {
+                Ok(()) => {
                     info!("Successfully processed node {:?}", node.address);
                     Ok(())
                 }

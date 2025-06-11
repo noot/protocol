@@ -50,7 +50,7 @@ impl GcsStorageProvider {
                 subpath_part.trim_start_matches('/').to_string(),
             )
         } else {
-            (bucket.to_string(), "".to_string())
+            (bucket.to_string(), String::new())
         }
     }
 }
@@ -63,7 +63,7 @@ impl StorageProvider for GcsStorageProvider {
 
         let object_path = object_path.strip_prefix('/').unwrap_or(object_path);
         let full_path = if !subpath.is_empty() {
-            format!("{}/{}", subpath, object_path)
+            format!("{subpath}/{object_path}")
         } else {
             object_path.to_string()
         };
@@ -82,14 +82,14 @@ impl StorageProvider for GcsStorageProvider {
     }
     async fn generate_mapping_file(&self, sha256: &str, file_name: &str) -> Result<String> {
         let client = self.client.clone();
-        let mapping_path = format!("mapping/{}", sha256);
+        let mapping_path = format!("mapping/{sha256}");
 
         let file_name = file_name.strip_prefix('/').unwrap_or(file_name);
         let content = file_name.to_string().into_bytes();
 
         let (bucket_name, subpath) = Self::get_bucket_name(&self.bucket);
         let object_path = if !subpath.is_empty() {
-            format!("{}/{}", subpath, mapping_path)
+            format!("{subpath}/{mapping_path}")
         } else {
             mapping_path.clone()
         };
@@ -114,10 +114,10 @@ impl StorageProvider for GcsStorageProvider {
     async fn resolve_mapping_for_sha(&self, sha256: &str) -> Result<String> {
         let client = self.client.clone();
         let (bucket_name, subpath) = Self::get_bucket_name(&self.bucket);
-        let mapping_path = format!("mapping/{}", sha256);
+        let mapping_path = format!("mapping/{sha256}");
 
         let object_path = if !subpath.is_empty() {
-            format!("{}/{}", subpath, mapping_path)
+            format!("{subpath}/{mapping_path}")
         } else {
             mapping_path.clone()
         };
@@ -153,7 +153,7 @@ impl StorageProvider for GcsStorageProvider {
         // Ensure object_path does not start with a /
         let object_path = object_path.strip_prefix('/').unwrap_or(object_path);
         let object_path = if !subpath.is_empty() {
-            format!("{}/{}", subpath, object_path)
+            format!("{subpath}/{object_path}")
         } else {
             object_path.to_string()
         };
@@ -194,20 +194,18 @@ mod tests {
     #[tokio::test]
     async fn test_generate_mapping_file() {
         // Check if required environment variables are set
-        let bucket_name = match std::env::var("S3_BUCKET_NAME") {
-            Ok(name) => name,
-            Err(_) => {
-                println!("Skipping test: BUCKET_NAME not set");
-                return;
-            }
+        let bucket_name = if let Ok(name) = std::env::var("S3_BUCKET_NAME") {
+            name
+        } else {
+            println!("Skipping test: BUCKET_NAME not set");
+            return;
         };
 
-        let credentials_base64 = match std::env::var("S3_CREDENTIALS") {
-            Ok(credentials) => credentials,
-            Err(_) => {
-                println!("Skipping test: S3_CREDENTIALS not set");
-                return;
-            }
+        let credentials_base64 = if let Ok(credentials) = std::env::var("S3_CREDENTIALS") {
+            credentials
+        } else {
+            println!("Skipping test: S3_CREDENTIALS not set");
+            return;
         };
 
         let storage = GcsStorageProvider::new(&bucket_name, &credentials_base64)
@@ -219,15 +217,15 @@ mod tests {
             .generate_mapping_file(&random_sha256, "run_1/file.parquet")
             .await
             .unwrap();
-        println!("mapping_content: {}", mapping_content);
-        println!("bucket_name: {}", bucket_name);
+        println!("mapping_content: {mapping_content}");
+        println!("bucket_name: {bucket_name}");
 
         let original_file_name = storage
             .resolve_mapping_for_sha(&random_sha256)
             .await
             .unwrap();
 
-        println!("original_file_name: {}", original_file_name);
+        println!("original_file_name: {original_file_name}");
         assert_eq!(original_file_name, "run_1/file.parquet");
     }
 }

@@ -25,6 +25,7 @@ pub struct HardwareValidator<'a> {
 }
 
 impl<'a> HardwareValidator<'a> {
+    #[must_use]
     pub fn new(wallet: &'a Wallet, contracts: Contracts<WalletProvider>) -> Self {
         Self { wallet, contracts }
     }
@@ -96,7 +97,7 @@ impl<'a> HardwareValidator<'a> {
                     match HardwareValidator::validate_node(wallet, contracts_clone, node_clone)
                         .await
                     {
-                        Ok(_) => (),
+                        Ok(()) => (),
                         Err(e) => {
                             error!("Failed to validate node: {}", e);
                         }
@@ -175,7 +176,7 @@ mod tests {
         let result = validator.validate_nodes(nodes).await;
         let elapsed = start_time.elapsed();
         assert!(elapsed < std::time::Duration::from_secs(11));
-        println!("Validation took: {:?}", elapsed);
+        println!("Validation took: {elapsed:?}");
 
         assert!(result.is_ok());
     }

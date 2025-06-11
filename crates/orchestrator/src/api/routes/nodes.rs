@@ -121,9 +121,9 @@ async fn restart_node_task(node_id: web::Path<String>, app_state: Data<AppState>
     let node_ip = node.ip_address;
     let node_port = node.port;
 
-    let node_url = format!("http://{}:{}", node_ip, node_port);
+    let node_url = format!("http://{node_ip}:{node_port}");
     let restart_path = "/task/restart".to_string();
-    let restart_url = format!("{}{}", node_url, restart_path);
+    let restart_url = format!("{node_url}{restart_path}");
     let payload = json!({
         "timestamp": std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -243,7 +243,7 @@ async fn get_node_logs(node_id: web::Path<String>, app_state: Data<AppState>) ->
     let node_ip = node.ip_address;
     let node_port = node.port;
 
-    let node_url = format!("http://{}:{}", node_ip, node_port);
+    let node_url = format!("http://{node_ip}:{node_port}");
     let logs_path = "/task/logs".to_string();
     let logs_url = format!(
         "{}{}?timestamp={}",
@@ -520,7 +520,7 @@ mod tests {
 
         let node_id = "0x0000000000000000000000000000000000000000";
         let req = test::TestRequest::get()
-            .uri(&format!("/nodes/{}/metrics", node_id))
+            .uri(&format!("/nodes/{node_id}/metrics"))
             .to_request();
         let resp = test::call_service(&app, req).await;
 

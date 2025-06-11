@@ -30,7 +30,7 @@ impl RedisStore {
                 }
             }
             Err(e) => {
-                panic!("Redis connection error: {}", e);
+                panic!("Redis connection error: {e}");
             }
         }
     }
@@ -45,7 +45,7 @@ impl RedisStore {
             _ => panic!("Expected TCP connection"),
         };
 
-        let redis_url = format!("redis://{}:{}", host, port);
+        let redis_url = format!("redis://{host}:{port}");
         debug!("Starting test Redis server at {}", redis_url);
 
         // Add a small delay to ensure server is ready

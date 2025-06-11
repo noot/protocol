@@ -14,12 +14,22 @@ pub struct MetricKey {
 }
 
 impl MetricEntry {
+    /// Creates a new `MetricEntry` with the given key and value.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not finite (NaN, positive infinity, or negative infinity).
     pub fn new(key: MetricKey, value: f64) -> Result<Self> {
         let entry = Self { key, value };
         entry.validate()?;
         Ok(entry)
     }
 
+    /// Validates the metric entry.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value is not finite (NaN, positive infinity, or negative infinity).
     pub fn validate(&self) -> Result<()> {
         if !self.value.is_finite() {
             bail!("Value must be a finite number");
@@ -57,7 +67,7 @@ mod tests {
         let invalid_values = vec![(f64::INFINITY, "infinite value"), (f64::NAN, "NaN value")];
         for (value, case) in invalid_values {
             let entry = MetricEntry::new(key.clone(), value);
-            assert!(entry.is_err(), "Should fail for {}", case);
+            assert!(entry.is_err(), "Should fail for {case}");
         }
     }
 

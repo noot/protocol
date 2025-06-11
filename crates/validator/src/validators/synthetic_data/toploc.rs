@@ -37,7 +37,7 @@ impl Toploc {
                 if let Some(token) = &config.auth_token {
                     headers.insert(
                         reqwest::header::AUTHORIZATION,
-                        reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token))
+                        reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))
                             .expect("Invalid token"),
                     );
                 }
@@ -53,6 +53,7 @@ impl Toploc {
         }
     }
 
+    #[must_use]
     pub fn name(&self) -> String {
         let prefix = self
             .config
@@ -77,6 +78,7 @@ impl Toploc {
         }
     }
 
+    #[must_use]
     pub fn matches_file_name(&self, file_name: &str) -> bool {
         let normalized_name = self.normalize_path(file_name);
         match &self.config.file_prefix_filter {
@@ -124,8 +126,7 @@ impl Toploc {
                         );
                     }
                     return Err(Error::msg(format!(
-                        "Server returned error status: {}",
-                        status
+                        "Server returned error status: {status}"
                     )));
                 }
                 let trigger_duration = start_time.elapsed();
@@ -152,7 +153,7 @@ impl Toploc {
                 if let Some(metrics) = &self.metrics {
                     metrics.record_api_request("toploc_single_file_validation", "0");
                 }
-                Err(Error::msg(format!("Failed to trigger validation: {}", e)))
+                Err(Error::msg(format!("Failed to trigger validation: {e}")))
             }
         }
     }
@@ -196,8 +197,7 @@ impl Toploc {
                         );
                     }
                     return Err(Error::msg(format!(
-                        "Server returned error status: {}",
-                        status
+                        "Server returned error status: {status}"
                     )));
                 }
                 let trigger_duration = start_time.elapsed();
@@ -224,8 +224,7 @@ impl Toploc {
                     metrics.record_api_request("toploc_group_file_validation", "0");
                 }
                 Err(Error::msg(format!(
-                    "Failed to trigger group validation: {}",
-                    e
+                    "Failed to trigger group validation: {e}"
                 )))
             }
         }
@@ -252,11 +251,11 @@ impl Toploc {
                     if let Some(metrics) = &self.metrics {
                         metrics.record_api_request("toploc_get_group_status", &status.to_string());
                     }
-                    return Err(Error::msg(format!("Unexpected status code: {}", status)));
+                    return Err(Error::msg(format!("Unexpected status code: {status}")));
                 }
                 let status_json: serde_json::Value = response.json().await.map_err(|e| {
                     error!("Failed to parse JSON response for {}: {}", file_name, e);
-                    Error::msg(format!("Failed to parse JSON response: {}", e))
+                    Error::msg(format!("Failed to parse JSON response: {e}"))
                 })?;
 
                 let duration = start_time.elapsed();
@@ -268,48 +267,45 @@ impl Toploc {
                 if status_json.get("status").is_none() {
                     error!("No status found for {}", file_name);
                     Err(Error::msg("No status found"))
+                } else if let Some(status) = status_json.get("status").and_then(|s| s.as_str()) {
+                    debug!("Validation status for {}: {}", file_name, status);
+
+                    let validation_result = match status {
+                        "accept" => ValidationResult::Accept,
+                        "reject" => ValidationResult::Reject,
+                        "crashed" => ValidationResult::Crashed,
+                        "pending" => ValidationResult::Pending,
+                        _ => ValidationResult::Unknown,
+                    };
+
+                    let input_flops = status_json
+                        .get("input_flops")
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0);
+                    let output_flops = status_json
+                        .get("output_flops")
+                        .and_then(serde_json::Value::as_f64)
+                        .unwrap_or(0.0);
+
+                    let failing_indices = status_json
+                        .get("failing_indices")
+                        .and_then(|f| f.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(serde_json::Value::as_i64)
+                                .collect::<Vec<i64>>()
+                        })
+                        .unwrap_or_default();
+
+                    Ok(GroupValidationResult {
+                        status: validation_result,
+                        input_flops,
+                        output_flops,
+                        failing_indices,
+                    })
                 } else {
-                    match status_json.get("status").and_then(|s| s.as_str()) {
-                        Some(status) => {
-                            debug!("Validation status for {}: {}", file_name, status);
-
-                            let validation_result = match status {
-                                "accept" => ValidationResult::Accept,
-                                "reject" => ValidationResult::Reject,
-                                "crashed" => ValidationResult::Crashed,
-                                "pending" => ValidationResult::Pending,
-                                _ => ValidationResult::Unknown,
-                            };
-
-                            let input_flops = status_json
-                                .get("input_flops")
-                                .and_then(|f| f.as_f64())
-                                .unwrap_or(0.0);
-                            let output_flops = status_json
-                                .get("output_flops")
-                                .and_then(|f| f.as_f64())
-                                .unwrap_or(0.0);
-
-                            let failing_indices = status_json
-                                .get("failing_indices")
-                                .and_then(|f| f.as_array())
-                                .map(|arr| {
-                                    arr.iter().filter_map(|v| v.as_i64()).collect::<Vec<i64>>()
-                                })
-                                .unwrap_or_default();
-
-                            Ok(GroupValidationResult {
-                                status: validation_result,
-                                input_flops,
-                                output_flops,
-                                failing_indices,
-                            })
-                        }
-                        None => {
-                            error!("No status found for {}", file_name);
-                            Err(Error::msg("No status found"))
-                        }
-                    }
+                    error!("No status found for {}", file_name);
+                    Err(Error::msg("No status found"))
                 }
             }
             Err(e) => {
@@ -318,8 +314,7 @@ impl Toploc {
                     file_name, e
                 );
                 Err(Error::msg(format!(
-                    "Failed to poll remote toploc group validation: {}",
-                    e
+                    "Failed to poll remote toploc group validation: {e}"
                 )))
             }
         }
@@ -347,34 +342,29 @@ impl Toploc {
                 }
                 let status_json: serde_json::Value = response.json().await.map_err(|e| {
                     error!("Failed to parse JSON response for {}: {}", file_name, e);
-                    Error::msg(format!("Failed to parse JSON response: {}", e))
+                    Error::msg(format!("Failed to parse JSON response: {e}"))
                 })?;
 
                 if status_json.get("status").is_none() {
                     error!("No status found for {}", file_name);
                     Err(Error::msg("No status found"))
-                } else {
-                    match status_json.get("status").and_then(|s| s.as_str()) {
-                        Some(status) => {
-                            debug!("Validation status for {}: {}", file_name, status);
+                } else if let Some(status) = status_json.get("status").and_then(|s| s.as_str()) {
+                    debug!("Validation status for {}: {}", file_name, status);
 
-                            let validation_result = match status {
-                                "accept" => ValidationResult::Accept,
-                                "reject" => ValidationResult::Reject,
-                                "crashed" => ValidationResult::Crashed,
-                                "pending" => ValidationResult::Pending,
-                                _ => {
-                                    warn!("Unknown status found for {}: {}", file_name, status);
-                                    ValidationResult::Unknown
-                                }
-                            };
-                            Ok(validation_result)
+                    let validation_result = match status {
+                        "accept" => ValidationResult::Accept,
+                        "reject" => ValidationResult::Reject,
+                        "crashed" => ValidationResult::Crashed,
+                        "pending" => ValidationResult::Pending,
+                        _ => {
+                            warn!("Unknown status found for {}: {}", file_name, status);
+                            ValidationResult::Unknown
                         }
-                        None => {
-                            error!("No status found for {}", file_name);
-                            Err(Error::msg("No status found"))
-                        }
-                    }
+                    };
+                    Ok(validation_result)
+                } else {
+                    error!("No status found for {}", file_name);
+                    Err(Error::msg("No status found"))
                 }
             }
             Err(e) => {
@@ -383,8 +373,7 @@ impl Toploc {
                     file_name, e
                 );
                 Err(Error::msg(format!(
-                    "Failed to poll remote toploc validation: {}",
-                    e
+                    "Failed to poll remote toploc validation: {e}"
                 )))
             }
         }
@@ -685,8 +674,7 @@ mod tests {
                 Some(expected_idx) => {
                     assert!(
                         matched,
-                        "Expected file {} to match config {}",
-                        test_file, expected_idx
+                        "Expected file {test_file} to match config {expected_idx}"
                     );
                     assert_eq!(
                         matched_idx,
@@ -697,7 +685,7 @@ mod tests {
                         expected_idx
                     );
                 }
-                None => assert!(!matched, "File {} should not match any config", test_file),
+                None => assert!(!matched, "File {test_file} should not match any config"),
             }
         }
     }

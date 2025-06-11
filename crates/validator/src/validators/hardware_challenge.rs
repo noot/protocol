@@ -18,6 +18,7 @@ pub struct HardwareChallenge<'a> {
 }
 
 impl<'a> HardwareChallenge<'a> {
+    #[must_use]
     pub fn new(wallet: &'a Wallet) -> Self {
         Self {
             wallet,
@@ -46,7 +47,7 @@ impl<'a> HardwareChallenge<'a> {
         let mut challenge_with_timestamp = challenge_matrix.clone();
         challenge_with_timestamp.timestamp = Some(current_time);
 
-        let post_url = format!("{}{}", node_url, challenge_route);
+        let post_url = format!("{node_url}{challenge_route}");
 
         let address = self.wallet.wallet.default_signer().address().to_string();
         let challenge_matrix_value = serde_json::to_value(&challenge_with_timestamp)?;

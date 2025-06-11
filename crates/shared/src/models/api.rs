@@ -2,6 +2,7 @@ use actix_web::HttpResponse;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct ApiResponse<T: Serialize> {
     pub success: bool,
     pub data: T,

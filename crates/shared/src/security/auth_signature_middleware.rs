@@ -36,6 +36,7 @@ pub struct ValidatorState {
 }
 
 impl ValidatorState {
+    #[must_use]
     pub fn new(initial_addresses: Vec<Address>) -> Self {
         let set = DashSet::new();
         for address in initial_addresses {
@@ -48,6 +49,7 @@ impl ValidatorState {
         }
     }
 
+    #[must_use]
     pub fn with_validator<F>(mut self, validator: F) -> Self
     where
         F: Fn(&Address) -> bool + Send + Sync + 'static,
@@ -56,6 +58,7 @@ impl ValidatorState {
         self
     }
 
+    #[must_use]
     pub fn with_async_validator<F>(mut self, validator: F) -> Self
     where
         F: Fn(&Address) -> LocalBoxFuture<'static, bool> + Send + Sync + 'static,
@@ -76,10 +79,12 @@ impl ValidatorState {
         self.allowed_addresses.iter().map(|addr| *addr)
     }
 
+    #[must_use]
     pub fn get_allowed_addresses(&self) -> Vec<Address> {
         self.iter_addresses().collect()
     }
 
+    #[must_use]
     pub fn is_address_allowed(&self, address: &Address) -> bool {
         if self.allowed_addresses.contains(address) {
             return true;
@@ -116,6 +121,7 @@ pub struct ValidateSignature {
 }
 
 impl ValidateSignature {
+    #[must_use]
     pub fn new(state: Arc<ValidatorState>) -> Self {
         Self {
             validator_state: state,
@@ -169,12 +175,12 @@ where
             .headers()
             .get("x-address")
             .and_then(|h| h.to_str().ok())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
         let x_signature = req
             .headers()
             .get("x-signature")
             .and_then(|h| h.to_str().ok())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         Box::pin(async move {
             // Collect the full body with size limit and timeout
@@ -243,7 +249,7 @@ where
                 };
 
                 if let Some(obj) = payload_data.as_object_mut() {
-                    timestamp = obj.get("timestamp").and_then(|v| v.as_u64());
+                    timestamp = obj.get("timestamp").and_then(serde_json::Value::as_u64);
                 }
             }
             if timestamp.is_none() {
@@ -263,7 +269,7 @@ where
             }
 
             // Combine path and payload
-            let msg: String = format!("{}{}", path, payload_string);
+            let msg: String = format!("{path}{payload_string}");
             // Validate signature
             if let (Some(address), Some(signature)) = (x_address, x_signature) {
                 let signature = signature.trim_start_matches("0x");
@@ -603,8 +609,7 @@ mod tests {
         // Create multiple addresses
         let addresses: Vec<Address> = (0..5)
             .map(|i| {
-                Address::from_str(&format!("0x{}000000000000000000000000000000000000000", i))
-                    .unwrap()
+                Address::from_str(&format!("0x{i}000000000000000000000000000000000000000")).unwrap()
             })
             .collect();
 
