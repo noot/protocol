@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 #[derive(Debug)]
-pub struct MetricsStore {
+pub struct Store {
     metrics: RwLock<HashMap<MetricKey, f64>>,
 }
 
-impl MetricsStore {
+impl Store {
     pub fn new() -> Self {
         Self {
             metrics: RwLock::new(HashMap::new()),
@@ -56,7 +56,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_metrics_store() -> Result<()> {
-        let store = MetricsStore::new();
+        let store = Store::new();
         store
             .update_metric("task1".to_string(), "progress".to_string(), 1.0)
             .await?;

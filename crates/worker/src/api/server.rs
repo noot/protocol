@@ -1,9 +1,9 @@
 use crate::api::routes::challenge::challenge_routes;
 use crate::api::routes::invite::invite_routes;
 use crate::api::routes::task::task_routes;
-use crate::docker::DockerService;
-use crate::operations::heartbeat::service::HeartbeatService;
-use crate::state::system_state::SystemState;
+use crate::docker;
+use crate::operations::heartbeat;
+use crate::state::system::State;
 use actix_web::{middleware, web::Data, App, HttpServer};
 use log::error;
 use shared::security::auth_signature_middleware::{ValidateSignature, ValidatorState};
@@ -17,9 +17,9 @@ pub struct AppState {
     pub contracts: Contracts<WalletProvider>,
     pub node_wallet: Wallet,
     pub provider_wallet: Wallet,
-    pub heartbeat_service: Arc<HeartbeatService>,
-    pub docker_service: Arc<DockerService>,
-    pub system_state: Arc<SystemState>,
+    pub heartbeat_service: Arc<heartbeat::Service>,
+    pub docker_service: Arc<docker::Service>,
+    pub system_state: Arc<State>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -29,10 +29,10 @@ pub async fn start_server(
     contracts: Contracts<WalletProvider>,
     node_wallet: Wallet,
     provider_wallet: Wallet,
-    heartbeat_service: Arc<HeartbeatService>,
-    docker_service: Arc<DockerService>,
+    heartbeat_service: Arc<heartbeat::Service>,
+    docker_service: Arc<docker::Service>,
     pool_info: Arc<PoolInfo>,
-    system_state: Arc<SystemState>,
+    system_state: Arc<State>,
 ) -> std::io::Result<()> {
     let app_state = Data::new(AppState {
         contracts: contracts.clone(),

@@ -9,11 +9,11 @@ use std::sync::Arc;
 
 const ORCHESTRATOR_METRICS_STORE: &str = "orchestrator:metrics";
 
-pub struct MetricsStore {
+pub struct Store {
     redis: Arc<RedisStore>,
 }
 
-impl MetricsStore {
+impl Store {
     pub fn new(redis: Arc<RedisStore>) -> Self {
         Self { redis }
     }

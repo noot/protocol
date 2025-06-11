@@ -1,7 +1,7 @@
 use crate::docker::taskbridge::file_handler;
 use crate::docker::taskbridge::json_helper;
-use crate::metrics::store::MetricsStore;
-use crate::state::system_state::SystemState;
+use crate::metrics::store::Store;
+use crate::state::system::State;
 use anyhow::Result;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -20,14 +20,15 @@ pub const SOCKET_NAME: &str = "metrics.sock";
 const DEFAULT_MACOS_SOCKET: &str = "/tmp/com.prime.worker/";
 const DEFAULT_LINUX_SOCKET: &str = "/tmp/com.prime.worker/";
 
+#[allow(clippy::module_name_repetitions)]
 pub struct TaskBridge {
     pub socket_path: String,
-    pub metrics_store: Arc<MetricsStore>,
+    pub metrics_store: Arc<Store>,
     pub contracts: Option<Contracts<WalletProvider>>,
     pub node_config: Option<Node>,
     pub node_wallet: Option<Wallet>,
     pub docker_storage_path: Option<String>,
-    pub state: Arc<SystemState>,
+    pub state: Arc<State>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -41,12 +42,12 @@ impl TaskBridge {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         socket_path: Option<&str>,
-        metrics_store: Arc<MetricsStore>,
+        metrics_store: Arc<Store>,
         contracts: Option<Contracts<WalletProvider>>,
         node_config: Option<Node>,
         node_wallet: Option<Wallet>,
         docker_storage_path: Option<String>,
-        state: Arc<SystemState>,
+        state: Arc<State>,
     ) -> Arc<Self> {
         let path = match socket_path {
             Some(path) => path.to_string(),
@@ -85,7 +86,8 @@ impl TaskBridge {
         }
         Ok(())
     }
-    async fn handle_file_upload(self: Arc<Self>, json_str: &str) -> Result<()> {
+
+    fn handle_file_upload(self: Arc<Self>, json_str: &str) -> Result<()> {
         debug!("Handling file upload");
         if let Ok(file_info) = serde_json::from_str::<serde_json::Value>(json_str) {
             let task_id = file_info["task_id"].as_str().unwrap_or("unknown");
@@ -179,7 +181,7 @@ impl TaskBridge {
     async fn handle_message(self: Arc<Self>, json_str: &str) -> Result<()> {
         debug!("Extracted JSON object: {}", json_str);
         if json_str.contains("output/save_path") {
-            if let Err(e) = self.handle_file_upload(json_str).await {
+            if let Err(e) = self.handle_file_upload(json_str) {
                 error!("Failed to handle file upload: {}", e);
             }
         } else {
@@ -199,6 +201,7 @@ impl TaskBridge {
         Ok(())
     }
 
+    #[allow(clippy::too_many_lines)]
     pub async fn run(self: Arc<Self>) -> Result<()> {
         let socket_path = Path::new(&self.socket_path);
         debug!("Setting up TaskBridge socket at: {}", socket_path.display());
@@ -251,9 +254,9 @@ impl TaskBridge {
         loop {
             let bridge = self.clone();
             match listener.accept().await {
-                Ok((stream, _addr)) => {
+                Ok((stream, addr)) => {
                     tokio::spawn(async move {
-                        debug!("Received connection from {:?}", _addr);
+                        debug!("Received connection from {:?}", addr);
                         let mut reader = BufReader::new(stream);
                         let mut buffer = vec![0; 1024];
                         let mut data = Vec::new();
@@ -339,7 +342,7 @@ impl TaskBridge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::metrics::store::MetricsStore;
+    use crate::metrics::store::Store;
     use serde_json::json;
     use shared::models::metric::Key as MetricKey;
     use std::sync::Arc;
@@ -352,8 +355,8 @@ mod tests {
     async fn test_socket_creation() -> Result<()> {
         let temp_dir = tempdir()?;
         let socket_path = temp_dir.path().join("test.sock");
-        let metrics_store = Arc::new(MetricsStore::new());
-        let state = Arc::new(SystemState::new(None, false, None));
+        let metrics_store = Arc::new(Store::new());
+        let state = Arc::new(State::new(None, false, None));
         let bridge = TaskBridge::new(
             Some(socket_path.to_str().unwrap()),
             metrics_store.clone(),
@@ -383,8 +386,8 @@ mod tests {
     async fn test_client_connection() -> Result<()> {
         let temp_dir = tempdir()?;
         let socket_path = temp_dir.path().join("test.sock");
-        let metrics_store = Arc::new(MetricsStore::new());
-        let state = Arc::new(SystemState::new(None, false, None));
+        let metrics_store = Arc::new(Store::new());
+        let state = Arc::new(State::new(None, false, None));
         let bridge = TaskBridge::new(
             Some(socket_path.to_str().unwrap()),
             metrics_store.clone(),
@@ -416,8 +419,8 @@ mod tests {
     async fn test_message_sending() -> Result<()> {
         let temp_dir = tempdir()?;
         let socket_path = temp_dir.path().join("test.sock");
-        let metrics_store = Arc::new(MetricsStore::new());
-        let state = Arc::new(SystemState::new(None, false, None));
+        let metrics_store = Arc::new(Store::new());
+        let state = Arc::new(State::new(None, false, None));
         let bridge = TaskBridge::new(
             Some(socket_path.to_str().unwrap()),
             metrics_store.clone(),
@@ -463,8 +466,8 @@ mod tests {
     async fn test_file_submission() -> Result<()> {
         let temp_dir = tempdir()?;
         let socket_path = temp_dir.path().join("test.sock");
-        let metrics_store = Arc::new(MetricsStore::new());
-        let state = Arc::new(SystemState::new(None, false, None));
+        let metrics_store = Arc::new(Store::new());
+        let state = Arc::new(State::new(None, false, None));
         let bridge = TaskBridge::new(
             Some(socket_path.to_str().unwrap()),
             metrics_store.clone(),
@@ -509,8 +512,8 @@ mod tests {
     async fn test_multiple_clients() -> Result<()> {
         let temp_dir = tempdir()?;
         let socket_path = temp_dir.path().join("test.sock");
-        let metrics_store = Arc::new(MetricsStore::new());
-        let state = Arc::new(SystemState::new(None, false, None));
+        let metrics_store = Arc::new(Store::new());
+        let state = Arc::new(State::new(None, false, None));
         let bridge = TaskBridge::new(
             Some(socket_path.to_str().unwrap()),
             metrics_store.clone(),

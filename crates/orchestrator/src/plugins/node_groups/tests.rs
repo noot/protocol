@@ -12,7 +12,7 @@ use alloy::primitives::Address;
 use redis::Commands;
 use shared::models::{
     node::{ComputeRequirements, ComputeSpecs, GpuSpecs},
-    task::{SchedulingConfig, Task, State as TaskState},
+    task::{SchedulingConfig, State as TaskState, Task},
 };
 use std::collections::BTreeSet;
 use std::{collections::HashMap, str::FromStr, sync::Arc};

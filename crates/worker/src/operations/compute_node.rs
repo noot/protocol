@@ -1,4 +1,4 @@
-use crate::{console::Console, state::system_state::SystemState};
+use crate::{console::Console, state::system::State};
 use alloy::{primitives::utils::keccak256 as keccak, primitives::U256, signers::Signer};
 use anyhow::Result;
 use shared::web3::wallet::Wallet;
@@ -7,19 +7,19 @@ use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
 
-pub struct ComputeNodeOperations<'c> {
+pub struct Operations<'c> {
     provider_wallet: &'c Wallet,
     node_wallet: &'c Wallet,
     contracts: Contracts<WalletProvider>,
-    system_state: Arc<SystemState>,
+    system_state: Arc<State>,
 }
 
-impl<'c> ComputeNodeOperations<'c> {
+impl<'c> Operations<'c> {
     pub fn new(
         provider_wallet: &'c Wallet,
         node_wallet: &'c Wallet,
         contracts: Contracts<WalletProvider>,
-        system_state: Arc<SystemState>,
+        system_state: Arc<State>,
     ) -> Self {
         Self {
             provider_wallet,
@@ -47,11 +47,10 @@ impl<'c> ComputeNodeOperations<'c> {
                         match contracts.compute_registry.get_node(provider_address, node_address).await {
                             Ok((active, validated)) => {
                                 if first_check || active != last_active {
-                                    if !first_check {
-                                        Console::info("🔄 Chain Sync - Pool membership changed", &format!("From {last_active} to {active}"
-                                        ));
-                                    } else {
+                                    if first_check {
                                         Console::info("🔄 Chain Sync - Node pool membership", &format!("{active}"));
+                                    } else {
+                                        Console::info("🔄 Chain Sync - Pool membership changed", &format!("From {last_active} to {active}"));
                                     }
                                     last_active = active;
                                 }
@@ -64,11 +63,10 @@ impl<'c> ComputeNodeOperations<'c> {
                                 }
 
                                 if first_check || validated != last_validated {
-                                    if !first_check {
-                                        Console::info("🔄 Chain Sync - Validation changed", &format!("From {last_validated} to {validated}"
-                                        ));
-                                    } else {
+                                    if first_check {
                                         Console::info("🔄 Chain Sync - Node validation", &format!("{validated}"));
+                                    } else {
+                                        Console::info("🔄 Chain Sync - Validation changed", &format!("From {last_validated} to {validated}"));
                                     }
                                     last_validated = validated;
                                 }

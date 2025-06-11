@@ -182,20 +182,26 @@ where
             Ok::<_, Error>(body)
         };
 
-        let Ok(body_result) = timeout(Duration::from_secs(BODY_TIMEOUT_SECS), body_read_future).await else { return Err(ErrorBadRequest("Request body read timeout")) };
+        let Ok(body_result) =
+            timeout(Duration::from_secs(BODY_TIMEOUT_SECS), body_read_future).await
+        else {
+            return Err(ErrorBadRequest("Request body read timeout"));
+        };
         body_result
     }
 
-    async fn process_payload(req: &ServiceRequest, body: &BytesMut) -> Result<(String, Option<u64>), Error> {
+    async fn process_payload(
+        req: &ServiceRequest,
+        body: &BytesMut,
+    ) -> Result<(String, Option<u64>), Error> {
         let mut payload_string = String::new();
         let mut timestamp = None;
 
         if req.method() != actix_web::http::Method::GET {
-            let payload_value: serde_json::Value = serde_json::from_slice(body)
-                .map_err(|e| {
-                    error!("Error parsing payload: {:?}", e);
-                    ErrorBadRequest(e)
-                })?;
+            let payload_value: serde_json::Value = serde_json::from_slice(body).map_err(|e| {
+                error!("Error parsing payload: {:?}", e);
+                ErrorBadRequest(e)
+            })?;
 
             let mut payload_data = payload_value.clone();
             if let Some(obj) = payload_data.as_object_mut() {
@@ -207,11 +213,10 @@ where
                 *obj = sorted_obj;
             }
 
-            payload_string = serde_json::to_string(&payload_data)
-                .map_err(|e| {
-                    error!("Error serializing payload: {:?}", e);
-                    ErrorBadRequest(e)
-                })?;
+            payload_string = serde_json::to_string(&payload_data).map_err(|e| {
+                error!("Error serializing payload: {:?}", e);
+                ErrorBadRequest(e)
+            })?;
 
             if let Some(obj) = payload_data.as_object_mut() {
                 timestamp = obj.get("timestamp").and_then(serde_json::Value::as_u64);
@@ -252,13 +257,17 @@ where
         service: Rc<S>,
     ) -> Result<ServiceResponse<B>, Error> {
         let signature = signature.trim_start_matches("0x");
-        let Ok(parsed_signature) = Signature::from_str(signature) else { return Err(ErrorBadRequest("Invalid signature format")) };
+        let Ok(parsed_signature) = Signature::from_str(signature) else {
+            return Err(ErrorBadRequest("Invalid signature format"));
+        };
 
         let Ok(recovered_address) = parsed_signature.recover_address_from_msg(msg) else {
-                        return Err(ErrorBadRequest("Failed to recover address from message"))
-                    };
+            return Err(ErrorBadRequest("Failed to recover address from message"));
+        };
 
-        let Ok(expected_address) = Address::from_str(&address) else { return Err(ErrorBadRequest("Invalid address format")) };
+        let Ok(expected_address) = Address::from_str(&address) else {
+            return Err(ErrorBadRequest("Invalid address format"));
+        };
 
         if recovered_address != expected_address {
             debug!("Recovered address: {:?}", recovered_address);
@@ -288,8 +297,7 @@ where
         }
 
         // Reconstruct request with the original body
-        let stream =
-            futures_util::stream::once(future::ok::<Bytes, PayloadError>(body.freeze()));
+        let stream = futures_util::stream::once(future::ok::<Bytes, PayloadError>(body.freeze()));
         let boxed_stream: Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>> =
             Box::pin(stream);
         req.set_payload(Payload::from(boxed_stream));
@@ -330,11 +338,19 @@ where
             let body = Self::read_request_body(&mut req).await?;
             let (payload_string, timestamp) = Self::process_payload(&req, &body).await?;
             let msg = format!("{path}{payload_string}");
-            
+
             if let (Some(address), Some(signature)) = (x_address, x_signature) {
                 Self::validate_and_process_request(
-                    req, body, address, signature, msg, timestamp, validator_state, service
-                ).await
+                    req,
+                    body,
+                    address,
+                    signature,
+                    msg,
+                    timestamp,
+                    validator_state,
+                    service,
+                )
+                .await
             } else {
                 Err(ErrorBadRequest("Missing signature or address"))
             }

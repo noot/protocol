@@ -485,7 +485,9 @@ mod tests {
         web::{self, post},
         HttpResponse, Scope,
     };
-    use shared::models::challenge::{calc_matrix, Request as ChallengeRequest, Response as ChallengeResponse, FixedF64};
+    use shared::models::challenge::{
+        calc_matrix, FixedF64, Request as ChallengeRequest, Response as ChallengeResponse,
+    };
 
     pub async fn handle_challenge(challenge: web::Json<ChallengeRequest>) -> HttpResponse {
         let result = calc_matrix(&challenge);

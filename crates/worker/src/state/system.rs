@@ -20,24 +20,24 @@ fn get_default_state_dir() -> Option<String> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct PersistedSystemState {
+struct PersistedState {
     endpoint: Option<String>,
     p2p_seed: u64,
 }
 
 #[derive(Debug, Clone)]
-pub struct SystemState {
+pub struct State {
     last_heartbeat: Arc<RwLock<Option<std::time::Instant>>>,
     is_running: Arc<RwLock<bool>>, // Keep is_running in the normal heartbeat state
     endpoint: Arc<RwLock<Option<String>>>,
-    state_dir_overwrite: Option<PathBuf>,
+    dir_overwrite: Option<PathBuf>,
     disable_state_storing: bool,
     pub compute_pool_id: Option<String>,
     p2p_id: String,
     p2p_seed: u64,
 }
 
-impl SystemState {
+impl State {
     pub fn new(
         state_dir: Option<String>,
         disable_state_storing: bool,
@@ -59,7 +59,7 @@ impl SystemState {
                     "No state file found at {:?}, will create on first state change",
                     state_file
                 );
-            } else if let Ok(Some(loaded_state)) = SystemState::load_state(path) {
+            } else if let Ok(Some(loaded_state)) = State::load_state(path) {
                 debug!("Loaded previous state from {:?}", state_file);
                 endpoint = loaded_state.endpoint;
                 p2p_seed = Some(loaded_state.p2p_seed);
@@ -75,7 +75,7 @@ impl SystemState {
             last_heartbeat: Arc::new(RwLock::new(None)),
             is_running: Arc::new(RwLock::new(false)),
             endpoint: Arc::new(RwLock::new(endpoint)),
-            state_dir_overwrite: state_path.clone(),
+            dir_overwrite: state_path.clone(),
             disable_state_storing,
             compute_pool_id,
             p2p_seed,
@@ -85,11 +85,11 @@ impl SystemState {
     fn save_state(&self, heartbeat_endpoint: Option<String>) -> Result<()> {
         if !self.disable_state_storing {
             debug!("Saving state");
-            if let Some(state_dir) = &self.state_dir_overwrite {
+            if let Some(state_dir) = &self.dir_overwrite {
                 // Get values without block_on
                 debug!("Saving p2p_seed: {:?}", self.p2p_seed);
 
-                let state = PersistedSystemState {
+                let state = PersistedState {
                     endpoint: heartbeat_endpoint,
                     p2p_seed: self.p2p_seed,
                 };
@@ -116,7 +116,7 @@ impl SystemState {
         Ok(())
     }
 
-    fn load_state(state_dir: &Path) -> Result<Option<PersistedSystemState>> {
+    fn load_state(state_dir: &Path) -> Result<Option<PersistedState>> {
         let state_path = state_dir.join(STATE_FILENAME);
         if state_path.exists() {
             let contents = fs::read_to_string(state_path)?;
@@ -163,10 +163,10 @@ impl SystemState {
             let mut endpoint = self.endpoint.write().await;
             *is_running = running;
 
-            if !running {
-                *endpoint = None;
-            } else {
+            if running {
                 *endpoint = heartbeat_endpoint;
+            } else {
+                *endpoint = None;
             }
 
             if endpoint.is_some() {
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_state_dir_overwrite() {
+    async fn test_dir_overwrite() {
         let default_state_dir = get_default_state_dir();
         assert!(default_state_dir.is_some());
     }
@@ -206,7 +206,7 @@ mod tests {
     async fn test_new_state_dir() {
         let temp_dir = setup_test_dir();
 
-        let state = SystemState::new(
+        let state = State::new(
             Some(temp_dir.path().to_string_lossy().to_string()),
             false,
             None,
@@ -219,7 +219,7 @@ mod tests {
         assert!(state_file.exists());
 
         let contents = fs::read_to_string(state_file).expect("Failed to read state file");
-        let state: PersistedSystemState =
+        let state: PersistedState =
             serde_json::from_str(&contents).expect("Failed to parse state file");
         assert_eq!(
             state.endpoint,
@@ -233,7 +233,7 @@ mod tests {
         let state_file = temp_dir.path().join(STATE_FILENAME);
         fs::write(&state_file, "invalid_toml_content").expect("Failed to write to state file");
 
-        let state = SystemState::new(
+        let state = State::new(
             Some(temp_dir.path().to_string_lossy().to_string()),
             false,
             None,
@@ -252,7 +252,7 @@ mod tests {
         )
         .expect("Failed to write to state file");
 
-        let state = SystemState::new(
+        let state = State::new(
             Some(temp_dir.path().to_string_lossy().to_string()),
             false,
             None,

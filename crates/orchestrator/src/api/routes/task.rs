@@ -4,8 +4,8 @@ use actix_web::{
     HttpResponse, Scope,
 };
 use serde_json::json;
-use shared::models::task::Task;
 use shared::models::task::Request as TaskRequest;
+use shared::models::task::Task;
 
 async fn get_all_tasks(app_state: Data<AppState>) -> HttpResponse {
     let task_store = app_state.store_context.task_store.clone();

@@ -1,7 +1,7 @@
 use alloy::primitives::Address;
 
 use crate::web3::contracts::{
-    core::error::{Error, ContractResult},
+    core::error::{ContractResult, Error},
     implementations::{
         ai_token_contract::AIToken, compute_pool_contract::ComputePool,
         compute_registry_contract::ComputeRegistryContract,
@@ -116,11 +116,7 @@ impl<P: alloy_provider::Provider + Clone> Builder<P> {
             },
             compute_registry: match self.compute_registry {
                 Some(registry) => registry,
-                None => {
-                    return Err(Error::Other(
-                        "ComputeRegistry not initialized".into(),
-                    ))
-                } // Custom error handling
+                None => return Err(Error::Other("ComputeRegistry not initialized".into())), // Custom error handling
             },
             ai_token: match self.ai_token {
                 Some(token) => token,

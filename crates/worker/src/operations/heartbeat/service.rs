@@ -1,28 +1,30 @@
-use crate::docker::DockerService;
-use crate::metrics::store::MetricsStore;
-use crate::state::system_state::SystemState;
+use crate::docker;
+use crate::metrics::store::Store;
+use crate::state::system::State;
 use crate::TaskHandles;
 use log;
 use log::info;
 use reqwest::Client;
 use shared::models::api::ApiResponse;
-use shared::models::heartbeat::{Request as HeartbeatRequest, Response as HeartbeatResponse};
+use shared::models::heartbeat::{Request, Response};
 use shared::security::request_signer::sign_request;
 use shared::web3::wallet::Wallet;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::time::{interval, Duration};
 use tokio_util::sync::CancellationToken;
+
 #[derive(Clone)]
-pub struct HeartbeatService {
-    state: Arc<SystemState>,
+pub struct Service {
+    state: Arc<State>,
     interval: Duration,
     client: Client,
     cancellation_token: CancellationToken,
     task_handles: TaskHandles,
     node_wallet: Wallet,
-    docker_service: Arc<DockerService>,
-    metrics_store: Arc<MetricsStore>,
+    #[allow(clippy::struct_field_names)]
+    docker_service: Arc<docker::Service>,
+    metrics_store: Arc<Store>,
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -32,16 +34,16 @@ pub enum HeartbeatError {
     #[error("Service initialization failed")]
     InitFailed,
 }
-impl HeartbeatService {
+impl Service {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         interval: Duration,
         cancellation_token: CancellationToken,
         task_handles: TaskHandles,
         node_wallet: Wallet,
-        docker_service: Arc<DockerService>,
-        metrics_store: Arc<MetricsStore>,
-        state: Arc<SystemState>,
+        docker_service: Arc<docker::Service>,
+        metrics_store: Arc<Store>,
+        state: Arc<State>,
     ) -> Result<Arc<Self>, HeartbeatError> {
         let client = Client::builder()
             .timeout(Duration::from_secs(5)) // 5 second timeout
@@ -137,14 +139,15 @@ impl HeartbeatService {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 async fn send_heartbeat(
     client: &Client,
     endpoint: Option<String>,
     wallet: Wallet,
-    docker_service: Arc<DockerService>,
-    metrics_store: Arc<MetricsStore>,
+    docker_service: Arc<docker::Service>,
+    metrics_store: Arc<Store>,
     p2p_id: String,
-) -> Result<HeartbeatResponse, HeartbeatError> {
+) -> Result<Response, HeartbeatError> {
     if endpoint.is_none() {
         return Err(HeartbeatError::RequestFailed);
     }
@@ -158,7 +161,7 @@ async fn send_heartbeat(
         let metrics_for_task = metrics_store
             .get_metrics_for_task(task.id.to_string())
             .await;
-        HeartbeatRequest {
+        Request {
             address: wallet.address().to_string(),
             task_id: Some(task.id.to_string()),
             task_state: Some(task.state.to_string()),
@@ -168,7 +171,7 @@ async fn send_heartbeat(
             p2p_id,
         }
     } else {
-        HeartbeatRequest {
+        Request {
             address: wallet.address().to_string(),
             task_id: None,
             task_state: None,
@@ -205,7 +208,7 @@ async fn send_heartbeat(
             log::error!("Error response received: {:?}", e);
             HeartbeatError::RequestFailed
         })?
-        .json::<ApiResponse<HeartbeatResponse>>()
+        .json::<ApiResponse<Response>>()
         .await
         .map_err(|e| {
             log::error!("Failed to parse response: {:?}", e);

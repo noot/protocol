@@ -1,9 +1,9 @@
 use crate::web3::contracts::core::contract::Contract;
+use crate::web3::contracts::core::error::{ContractResult, Error};
 use alloy::{
     dyn_abi::{DynSolValue, Word},
     primitives::{Address, U256},
 };
-use crate::web3::contracts::core::error::{Error, ContractResult};
 use log::debug;
 use serde::Deserialize;
 use serde::Serialize;
@@ -35,10 +35,9 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
             .call()
             .await?;
 
-        let array_value = result
-            .into_iter()
-            .next()
-            .ok_or_else(|| Error::InvalidResponse("No result returned from getWorkKeys".to_string()))?;
+        let array_value = result.into_iter().next().ok_or_else(|| {
+            Error::InvalidResponse("No result returned from getWorkKeys".to_string())
+        })?;
 
         let array = array_value
             .as_array()
@@ -74,7 +73,9 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
         let work_key_bytes = hex::decode(work_key)
             .map_err(|e| Error::DecodingError(format!("Failed to decode hex work key: {}", e)))?;
         if work_key_bytes.len() != 32 {
-            return Err(Error::DecodingError("Work key must be 32 bytes".to_string()));
+            return Err(Error::DecodingError(
+                "Work key must be 32 bytes".to_string(),
+            ));
         }
         debug!("Decoded work key bytes: {:?}", work_key_bytes);
 
@@ -88,10 +89,9 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
             .await?;
         debug!("Got work info result: {:?}", result);
 
-        let tuple = result
-            .into_iter()
-            .next()
-            .ok_or_else(|| Error::InvalidResponse("No result returned from getWorkInfo".to_string()))?;
+        let tuple = result.into_iter().next().ok_or_else(|| {
+            Error::InvalidResponse("No result returned from getWorkInfo".to_string())
+        })?;
 
         let tuple_array = tuple
             .as_tuple()
@@ -141,10 +141,9 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
             .call()
             .await?;
 
-        let array_value = result
-            .into_iter()
-            .next()
-            .ok_or_else(|| Error::InvalidResponse("No result returned from getWorkSince".to_string()))?;
+        let array_value = result.into_iter().next().ok_or_else(|| {
+            Error::InvalidResponse("No result returned from getWorkSince".to_string())
+        })?;
 
         let array = array_value
             .as_array()

@@ -2,13 +2,13 @@ use shared::models::node::Node;
 use shared::security::request_signer::sign_request;
 use shared::web3::wallet::Wallet;
 
-pub struct DiscoveryService {
+pub struct Service {
     wallet: Wallet,
     base_url: String,
     endpoint: String,
 }
 
-impl DiscoveryService {
+impl Service {
     pub fn new(wallet: Wallet, base_url: Option<String>, endpoint: Option<String>) -> Self {
         Self {
             wallet,
@@ -65,7 +65,7 @@ impl DiscoveryService {
     }
 }
 
-impl Clone for DiscoveryService {
+impl Clone for Service {
     fn clone(&self) -> Self {
         Self {
             wallet: self.wallet.clone(),

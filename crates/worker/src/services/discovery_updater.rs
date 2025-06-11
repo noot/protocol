@@ -1,5 +1,5 @@
-use crate::services::discovery::DiscoveryService;
-use crate::state::system_state::SystemState;
+use crate::services::discovery::Service;
+use crate::state::system::State;
 use log::{debug, error, info};
 use shared::models::node::Node;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -11,14 +11,14 @@ const INITIAL_UPDATE_DELAY: Duration = Duration::from_secs(120);
 const UPDATE_INTERVAL: Duration = Duration::from_secs(120);
 
 pub struct DiscoveryUpdater {
-    discovery_service: Arc<DiscoveryService>,
+    discovery_service: Arc<Service>,
     is_running: Arc<AtomicBool>,
-    system_state: Arc<SystemState>,
+    system_state: Arc<State>,
     cancellation_token: Arc<CancellationToken>,
 }
 
 impl DiscoveryUpdater {
-    pub fn new(discovery_service: DiscoveryService, system_state: Arc<SystemState>) -> Self {
+    pub fn new(discovery_service: Service, system_state: Arc<State>) -> Self {
         Self {
             discovery_service: Arc::new(discovery_service),
             is_running: Arc::new(AtomicBool::new(false)),

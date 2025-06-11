@@ -40,14 +40,14 @@ pub struct ContainerDetails {
     pub created: i64,
 }
 
-pub struct DockerManager {
+pub struct Manager {
     docker: Docker,
     storage_path: Option<String>,
 }
 
-impl DockerManager {
+impl Manager {
     const DEFAULT_LOG_TAIL: i64 = 300;
-    /// Create a new `DockerManager` instance
+    /// Create a new `Manager` instance
     pub fn new(storage_path: Option<String>) -> Result<Self, DockerError> {
         let docker = match Docker::connect_with_unix_defaults() {
             Ok(docker) => docker,

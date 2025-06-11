@@ -3,6 +3,6 @@ pub mod service;
 pub mod state;
 pub mod taskbridge;
 
-pub use docker_manager::DockerManager;
-pub use service::DockerService;
-pub use state::DockerState;
+pub use docker_manager::Manager;
+pub use service::Service;
+pub use state::State;

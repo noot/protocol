@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
     let node = Address::from_str(&args.node).expect("Invalid node address");
     let work_key = hex::decode(&args.work_key).expect("Invalid work key hex");
 
-    assert!(!(work_key.len() != 32), "Work key must be 32 bytes");
+    assert!(work_key.len() == 32, "Work key must be 32 bytes");
 
     let call = contracts
         .compute_pool

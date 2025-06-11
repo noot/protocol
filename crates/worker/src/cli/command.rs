@@ -4,15 +4,15 @@ use crate::checks::issue::IssueReport;
 use crate::checks::software::SoftwareChecker;
 use crate::checks::stun::StunCheck;
 use crate::console::Console;
+use crate::docker;
 use crate::docker::taskbridge::TaskBridge;
-use crate::docker::DockerService;
-use crate::metrics::store::MetricsStore;
-use crate::operations::compute_node::ComputeNodeOperations;
-use crate::operations::heartbeat::service::HeartbeatService;
-use crate::operations::provider::ProviderOperations;
-use crate::services::discovery::DiscoveryService;
+use crate::metrics::store::Store;
+use crate::operations::compute_node;
+use crate::operations::heartbeat;
+use crate::operations::provider;
+use crate::services::discovery;
 use crate::services::discovery_updater::DiscoveryUpdater;
-use crate::state::system_state::SystemState;
+use crate::state::system::State;
 use crate::TaskHandles;
 use alloy::primitives::U256;
 use alloy::signers::local::PrivateKeySigner;
@@ -189,7 +189,7 @@ pub async fn execute_command(
                 );
                 std::process::exit(1);
             }
-            let state = Arc::new(SystemState::new(
+            let state = Arc::new(State::new(
                 state_dir_overwrite.clone(),
                 *disable_state_storing,
                 Some(compute_pool_id.to_string()),
@@ -246,7 +246,7 @@ pub async fn execute_command(
                 .build()
                 .unwrap();
 
-            let provider_ops = ProviderOperations::new(
+            let provider_ops = provider::Operations::new(
                 provider_wallet_instance.clone(),
                 contracts.clone(),
                 *auto_accept,
@@ -255,7 +255,7 @@ pub async fn execute_command(
             let provider_ops_cancellation = cancellation_token.clone();
 
             let compute_node_state = state.clone();
-            let compute_node_ops = ComputeNodeOperations::new(
+            let compute_node_ops = compute_node::Operations::new(
                 &provider_wallet_instance,
                 &node_wallet_instance,
                 contracts.clone(),
@@ -263,7 +263,7 @@ pub async fn execute_command(
             );
 
             let discovery_service =
-                DiscoveryService::new(node_wallet_instance.clone(), discovery_url.clone(), None);
+                discovery::Service::new(node_wallet_instance.clone(), discovery_url.clone(), None);
             let discovery_state = state.clone();
             let discovery_updater =
                 DiscoveryUpdater::new(discovery_service.clone(), discovery_state.clone());
@@ -381,7 +381,7 @@ pub async fn execute_command(
                 }
             }
 
-            let metrics_store = Arc::new(MetricsStore::new());
+            let metrics_store = Arc::new(Store::new());
             let heartbeat_metrics_clone = metrics_store.clone();
             let bridge_contracts = contracts.clone();
             let bridge_wallet = node_wallet_instance.clone();
@@ -409,7 +409,7 @@ pub async fn execute_command(
                 .compute_specs
                 .clone()
                 .and_then(|specs| specs.gpu.clone());
-            let docker_service = Arc::new(DockerService::new(
+            let docker_service = Arc::new(docker::Service::new(
                 cancellation_token.clone(),
                 gpu,
                 system_memory,
@@ -434,7 +434,7 @@ pub async fn execute_command(
                 }
             });
             let heartbeat_state = state.clone();
-            let heartbeat_service = HeartbeatService::new(
+            let heartbeat_service = heartbeat::Service::new(
                 Duration::from_secs(10),
                 cancellation_token.clone(),
                 task_handles.clone(),
@@ -838,7 +838,7 @@ pub async fn execute_command(
                         std::process::exit(1);
                     }
                 };
-            let state = Arc::new(SystemState::new(None, true, None));
+            let state = Arc::new(State::new(None, true, None));
             /*
              Initialize dependencies - services, contracts, operations
             */
@@ -852,15 +852,18 @@ pub async fn execute_command(
                 .build()
                 .unwrap();
 
-            let compute_node_ops = ComputeNodeOperations::new(
+            let compute_node_ops = compute_node::Operations::new(
                 &provider_wallet_instance,
                 &node_wallet_instance,
                 contracts.clone(),
                 state.clone(),
             );
 
-            let provider_ops =
-                ProviderOperations::new(provider_wallet_instance.clone(), contracts.clone(), false);
+            let provider_ops = provider::Operations::new(
+                provider_wallet_instance.clone(),
+                contracts.clone(),
+                false,
+            );
 
             let compute_node_exists = match compute_node_ops.check_compute_node_exists().await {
                 Ok(exists) => exists,

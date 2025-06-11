@@ -16,7 +16,7 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
-use utils::logging::setup_logging;
+use utils::logging;
 pub type TaskHandles = Arc<Mutex<Vec<JoinHandle<()>>>>;
 
 #[tokio::main]
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cli = Cli::parse();
 
-    if let Err(e) = setup_logging(Some(&cli)) {
+    if let Err(e) = logging::setup(Some(&cli)) {
         eprintln!("Warning: Failed to initialize logging: {e}. Using default logging.");
     }
 

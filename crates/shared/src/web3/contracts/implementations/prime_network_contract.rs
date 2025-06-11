@@ -1,10 +1,10 @@
 use crate::web3::contracts::constants::addresses::PRIME_NETWORK_ADDRESS;
 use crate::web3::contracts::core::contract::Contract;
+use crate::web3::contracts::core::error::{ContractResult, Error};
 use crate::web3::wallet::WalletProvider;
 use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{keccak256, Address, FixedBytes, U256};
 use alloy_provider::Provider as _;
-use crate::web3::contracts::core::error::{Error, ContractResult};
 
 #[derive(Clone)]
 pub struct PrimeNetworkContract<P: alloy_provider::Provider> {
@@ -34,7 +34,9 @@ impl<P: alloy_provider::Provider> PrimeNetworkContract<P> {
                     if let Some(addr) = address.as_address() {
                         members_vec.push(addr);
                     } else {
-                        return Err(Error::DecodingError("Failed to convert member to address".to_string()));
+                        return Err(Error::DecodingError(
+                            "Failed to convert member to address".to_string(),
+                        ));
                     }
                 }
             } else {

@@ -1,8 +1,8 @@
 use crate::web3::contracts::constants::addresses::DOMAIN_REGISTRY_ADDRESS;
 use crate::web3::contracts::core::contract::Contract;
+use crate::web3::contracts::core::error::{ContractResult, Error};
 use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{Address, U256};
-use crate::web3::contracts::core::error::{Error, ContractResult};
 
 pub struct Domain {
     pub domain_id: U256,
@@ -44,9 +44,9 @@ impl<P: alloy_provider::Provider> DomainRegistryContract<P> {
             .as_str()
             .ok_or_else(|| Error::DecodingError("Failed to get domain name".to_string()))?
             .to_string();
-        let validation_logic: Address = domain_info_tuple[2]
-            .as_address()
-            .ok_or_else(|| Error::DecodingError("Failed to get validation logic address".to_string()))?;
+        let validation_logic: Address = domain_info_tuple[2].as_address().ok_or_else(|| {
+            Error::DecodingError("Failed to get validation logic address".to_string())
+        })?;
         let domain_parameters_uri: String = domain_info_tuple[3]
             .as_str()
             .ok_or_else(|| Error::DecodingError("Failed to get domain parameters URI".to_string()))?

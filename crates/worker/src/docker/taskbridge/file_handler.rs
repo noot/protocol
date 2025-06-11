@@ -1,4 +1,4 @@
-use crate::state::system_state::SystemState;
+use crate::state::system::State;
 use alloy::primitives::{Address, U256};
 use anyhow::Result;
 use log::{debug, error, info, warn};
@@ -15,13 +15,18 @@ use std::sync::Arc;
 use std::time::Duration;
 
 /// Handles a file upload request
+#[allow(clippy::too_many_lines)]
 pub async fn handle_file_upload(
     storage_path: &str,
     task_id: &str,
     file_name: &str,
     wallet: &Wallet,
-    state: &Arc<SystemState>,
+    state: &Arc<State>,
 ) -> Result<()> {
+    // Retry configuration
+    const MAX_RETRIES: usize = 5;
+    const INITIAL_RETRY_DELAY_MS: u64 = 1000; // 1 second
+
     info!("📄 Received file upload request: {}", file_name);
     info!("Task ID: {}, Storage path: {}", task_id, storage_path);
 
@@ -81,10 +86,6 @@ pub async fn handle_file_upload(
         sha256: file_sha.clone(),
         task_id: task_id.to_string(),
     };
-
-    // Retry configuration
-    const MAX_RETRIES: usize = 5;
-    const INITIAL_RETRY_DELAY_MS: u64 = 1000; // 1 second
 
     // Retry loop for getting signed URL
     let mut retry_count = 0;
@@ -214,9 +215,7 @@ pub async fn handle_file_upload(
         }
     }
 
-    let signed_url = if let Some(url) = signed_url {
-        url
-    } else {
+    let Some(signed_url) = signed_url else {
         error!("Failed to get signed URL after {} attempts", MAX_RETRIES);
         return Err(last_error.unwrap_or_else(|| {
             anyhow::anyhow!("Failed to get signed URL after {} attempts", MAX_RETRIES)

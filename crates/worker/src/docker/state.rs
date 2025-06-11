@@ -1,15 +1,15 @@
 use chrono::{DateTime, Utc};
-use shared::models::task::{Task, State as TaskState};
+use shared::models::task::{State as TaskState, Task};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-pub struct DockerState {
+pub struct State {
     current_task: Arc<Mutex<Option<Task>>>,
     last_started: Arc<Mutex<Option<DateTime<Utc>>>>,
     is_running: Arc<Mutex<bool>>,
 }
 
-impl DockerState {
+impl State {
     pub fn new() -> Self {
         Self {
             current_task: Arc::new(Mutex::new(None)),

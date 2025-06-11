@@ -17,9 +17,8 @@ pub fn generate_iroh_node_id_from_seed(seed: u64) -> String {
     let secret_key = SecretKey::generate(&mut rng);
 
     // Get the node ID (public key) as a string
-    let node_id = secret_key.public().to_string();
 
-    node_id
+    secret_key.public().to_string()
 }
 
 #[cfg(test)]
