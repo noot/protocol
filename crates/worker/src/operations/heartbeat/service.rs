@@ -6,7 +6,7 @@ use log;
 use log::info;
 use reqwest::Client;
 use shared::models::api::ApiResponse;
-use shared::models::heartbeat::{HeartbeatRequest, HeartbeatResponse};
+use shared::models::heartbeat::{Request as HeartbeatRequest, Response as HeartbeatResponse};
 use shared::security::request_signer::sign_request;
 use shared::web3::wallet::Wallet;
 use std::sync::Arc;

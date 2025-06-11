@@ -1,6 +1,15 @@
 // request_signer.rs
 use crate::web3::wallet::Wallet;
 use alloy::signers::Signer;
+/// Signs a request for authentication purposes.
+///
+/// # Errors
+///
+/// Returns an error if serialization fails or if the wallet signing fails.
+///
+/// # Panics
+///
+/// Panics if object key removal fails during JSON manipulation.
 pub async fn sign_request(
     endpoint: &str,
     wallet: &Wallet,

@@ -2,7 +2,7 @@ use crate::web3::contracts::constants::addresses::DOMAIN_REGISTRY_ADDRESS;
 use crate::web3::contracts::core::contract::Contract;
 use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{Address, U256};
-use anyhow::Error;
+use crate::web3::contracts::core::error::{Error, ContractResult};
 
 pub struct Domain {
     pub domain_id: U256,
@@ -22,7 +22,7 @@ impl<P: alloy_provider::Provider> DomainRegistryContract<P> {
         Self { instance }
     }
 
-    pub async fn get_domain(&self, domain_id: u32) -> Result<Domain, Error> {
+    pub async fn get_domain(&self, domain_id: u32) -> ContractResult<Domain> {
         let result = self
             .instance
             .instance()
@@ -32,24 +32,24 @@ impl<P: alloy_provider::Provider> DomainRegistryContract<P> {
 
         let domain_info_tuple: &[DynSolValue] = result
             .first()
-            .ok_or_else(|| Error::msg("Failed to get domain info tuple"))?
+            .ok_or_else(|| Error::InvalidResponse("Failed to get domain info tuple".to_string()))?
             .as_tuple()
-            .ok_or_else(|| Error::msg("Failed to convert to tuple"))?;
+            .ok_or_else(|| Error::InvalidResponse("Failed to convert to tuple".to_string()))?;
 
         let domain_id: U256 = domain_info_tuple[0]
             .as_uint()
-            .ok_or_else(|| Error::msg("Failed to get domain ID"))?
+            .ok_or_else(|| Error::DecodingError("Failed to get domain ID".to_string()))?
             .0;
         let name: String = domain_info_tuple[1]
             .as_str()
-            .ok_or_else(|| Error::msg("Failed to get domain name"))?
+            .ok_or_else(|| Error::DecodingError("Failed to get domain name".to_string()))?
             .to_string();
         let validation_logic: Address = domain_info_tuple[2]
             .as_address()
-            .ok_or_else(|| Error::msg("Failed to get validation logic address"))?;
+            .ok_or_else(|| Error::DecodingError("Failed to get validation logic address".to_string()))?;
         let domain_parameters_uri: String = domain_info_tuple[3]
             .as_str()
-            .ok_or_else(|| Error::msg("Failed to get domain parameters URI"))?
+            .ok_or_else(|| Error::DecodingError("Failed to get domain parameters URI".to_string()))?
             .to_string();
 
         Ok(Domain {

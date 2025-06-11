@@ -1146,7 +1146,7 @@ mod tests {
     use anyhow::Ok;
     use mockito::Server;
     use shared::utils::MockStorageProvider;
-    use shared::web3::contracts::core::builder::{ContractBuilder, Contracts};
+    use shared::web3::contracts::core::builder::{Builder, Contracts};
     use shared::web3::wallet::Wallet;
     use std::str::FromStr;
     use url::Url;
@@ -1177,7 +1177,7 @@ mod tests {
         )
         .map_err(|e| Error::msg(format!("Failed to create demo wallet: {e}")))?;
 
-        let contracts = ContractBuilder::new(demo_wallet.provider())
+        let contracts = Builder::new(demo_wallet.provider())
             .with_compute_registry()
             .with_ai_token()
             .with_prime_network()
@@ -1575,6 +1575,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::too_many_lines)]
     async fn test_group_e2e_work_unit_mismatch() -> Result<(), Error> {
         let mut server = Server::new_async().await;
         let (store, contracts) = setup_test_env()?;

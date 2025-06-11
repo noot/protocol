@@ -3,7 +3,7 @@ use alloy::primitives::Address;
 use anyhow::{anyhow, Result};
 use log::error;
 use redis::AsyncCommands;
-use shared::models::metric::MetricEntry;
+use shared::models::metric::Entry as MetricEntry;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -82,7 +82,7 @@ impl MetricsStore {
     pub async fn store_manual_metrics(&self, label: String, value: f64) -> Result<()> {
         self.store_metrics(
             Some(vec![MetricEntry {
-                key: shared::models::metric::MetricKey {
+                key: shared::models::metric::Key {
                     task_id: String::new(),
                     label,
                 },
@@ -237,8 +237,8 @@ impl MetricsStore {
 mod tests {
     use super::*;
     use crate::api::tests::helper::create_test_app_state;
-    use shared::models::metric::MetricEntry;
-    use shared::models::metric::MetricKey;
+    use shared::models::metric::Entry as MetricEntry;
+    use shared::models::metric::Key as MetricKey;
     use std::str::FromStr;
 
     #[tokio::test]

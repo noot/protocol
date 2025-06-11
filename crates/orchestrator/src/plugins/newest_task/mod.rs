@@ -27,7 +27,7 @@ impl SchedulerPlugin for NewestTaskPlugin {
 
 #[cfg(test)]
 mod tests {
-    use shared::models::task::TaskState;
+    use shared::models::task::State as TaskState;
     use uuid::Uuid;
 
     use super::*;

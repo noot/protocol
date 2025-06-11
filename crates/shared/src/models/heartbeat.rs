@@ -1,31 +1,31 @@
 use super::api::ApiResponse;
-use super::metric::MetricEntry;
+use super::metric::Entry;
 use super::task::Task;
 use actix_web::HttpResponse;
 use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct HeartbeatResponse {
+pub struct Response {
     pub current_task: Option<Task>,
 }
 
-impl From<HeartbeatResponse> for ApiResponse<HeartbeatResponse> {
-    fn from(response: HeartbeatResponse) -> Self {
+impl From<Response> for ApiResponse<Response> {
+    fn from(response: Response) -> Self {
         ApiResponse::new(true, response)
     }
 }
 
-impl From<HeartbeatResponse> for HttpResponse {
-    fn from(response: HeartbeatResponse) -> Self {
+impl From<Response> for HttpResponse {
+    fn from(response: Response) -> Self {
         ApiResponse::new(true, response).into()
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-pub struct HeartbeatRequest {
+pub struct Request {
     pub address: String,
     pub task_id: Option<String>,
     pub task_state: Option<String>,
-    pub metrics: Option<Vec<MetricEntry>>,
+    pub metrics: Option<Vec<Entry>>,
     #[serde(default)]
     pub version: Option<String>,
     pub timestamp: Option<u64>,

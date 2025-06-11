@@ -2,7 +2,7 @@ use alloy::primitives::Address;
 use alloy::providers::RootProvider;
 use clap::Parser;
 use eyre::Result;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use std::str::FromStr;
 use url::Url;
 
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
     let provider = RootProvider::new_http(Url::parse(&args.rpc_url).unwrap());
 
     // Build the contract
-    let contracts = ContractBuilder::new(provider)
+    let contracts = Builder::new(provider)
         .with_compute_registry()
         .with_ai_token() // Initialize AI Token
         .with_prime_network() // Initialize Prime Network

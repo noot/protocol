@@ -341,7 +341,7 @@ mod tests {
     use super::*;
     use crate::metrics::store::MetricsStore;
     use serde_json::json;
-    use shared::models::metric::MetricKey;
+    use shared::models::metric::Key as MetricKey;
     use std::sync::Arc;
     use std::time::Duration;
     use tempfile::tempdir;

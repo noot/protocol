@@ -6,7 +6,7 @@ use anyhow::Result;
 use log::info;
 use redis::AsyncCommands;
 use redis::Value;
-use shared::models::task::TaskState;
+use shared::models::task::State as TaskState;
 use std::sync::Arc;
 
 const ORCHESTRATOR_BASE_KEY: &str = "orchestrator:node:";

@@ -1,5 +1,5 @@
 use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
+    dev::{forward_ready, Service as ActixService, ServiceRequest, ServiceResponse, Transform},
     error::ErrorUnauthorized,
     http::header::AUTHORIZATION,
     Error,
@@ -19,32 +19,32 @@ impl ApiKeyMiddleware {
 
 impl<S, B> Transform<S, ServiceRequest> for ApiKeyMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: ActixService<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
     type Error = Error;
-    type Transform = ApiKeyMiddlewareService<S>;
+    type Transform = Service<S>;
     type InitError = ();
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(ApiKeyMiddlewareService {
+        ready(Ok(Service {
             service,
             api_key: self.api_key.clone(),
         }))
     }
 }
 
-pub struct ApiKeyMiddlewareService<S> {
+pub struct Service<S> {
     service: S,
     api_key: String,
 }
 
-impl<S, B> Service<ServiceRequest> for ApiKeyMiddlewareService<S>
+impl<S, B> ActixService<ServiceRequest> for Service<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S: ActixService<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     S::Future: 'static,
     B: 'static,
 {

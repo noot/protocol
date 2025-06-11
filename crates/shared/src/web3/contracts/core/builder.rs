@@ -1,7 +1,7 @@
 use alloy::primitives::Address;
 
 use crate::web3::contracts::{
-    core::error::ContractError, // Using custom error ContractError
+    core::error::{Error, ContractResult},
     implementations::{
         ai_token_contract::AIToken, compute_pool_contract::ComputePool,
         compute_registry_contract::ComputeRegistryContract,
@@ -11,7 +11,6 @@ use crate::web3::contracts::{
     },
 };
 use std::option::Option;
-use std::result::Result;
 
 #[derive(Clone)]
 pub struct Contracts<P: alloy_provider::Provider> {
@@ -24,7 +23,7 @@ pub struct Contracts<P: alloy_provider::Provider> {
     pub domain_registry: Option<DomainRegistryContract<P>>,
 }
 
-pub struct ContractBuilder<P: alloy_provider::Provider + Clone> {
+pub struct Builder<P: alloy_provider::Provider + Clone> {
     provider: P,
     compute_registry: Option<ComputeRegistryContract<P>>,
     ai_token: Option<AIToken<P>>,
@@ -35,7 +34,7 @@ pub struct ContractBuilder<P: alloy_provider::Provider + Clone> {
     domain_registry: Option<DomainRegistryContract<P>>,
 }
 
-impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
+impl<P: alloy_provider::Provider + Clone> Builder<P> {
     pub fn new(provider: P) -> Self {
         Self {
             provider,
@@ -49,6 +48,7 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
         }
     }
 
+    #[must_use]
     pub fn with_compute_registry(mut self) -> Self {
         self.compute_registry = Some(ComputeRegistryContract::new(
             self.provider.clone(),
@@ -57,11 +57,13 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
         self
     }
 
+    #[must_use]
     pub fn with_ai_token(mut self) -> Self {
         self.ai_token = Some(AIToken::new(self.provider.clone(), "ai_token.json"));
         self
     }
 
+    #[must_use]
     pub fn with_prime_network(mut self) -> Self {
         self.prime_network = Some(PrimeNetworkContract::new(
             self.provider.clone(),
@@ -70,11 +72,13 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
         self
     }
 
+    #[must_use]
     pub fn with_compute_pool(mut self) -> Self {
         self.compute_pool = Some(ComputePool::new(self.provider.clone(), "compute_pool.json"));
         self
     }
 
+    #[must_use]
     pub fn with_synthetic_data_validator(mut self, address: Option<Address>) -> Self {
         self.synthetic_data_validator = Some(SyntheticDataWorkValidator::new(
             address.unwrap_or(Address::ZERO),
@@ -84,6 +88,7 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
         self
     }
 
+    #[must_use]
     pub fn with_domain_registry(mut self) -> Self {
         self.domain_registry = Some(DomainRegistryContract::new(
             self.provider.clone(),
@@ -92,6 +97,7 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
         self
     }
 
+    #[must_use]
     pub fn with_stake_manager(mut self) -> Self {
         self.stake_manager = Some(StakeManagerContract::new(
             self.provider.clone(),
@@ -101,28 +107,28 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
     }
 
     // TODO: This is not ideal yet - now you have to init all contracts all the time
-    pub fn build(self) -> Result<Contracts<P>, ContractError> {
-        // Using custom error ContractError
+    pub fn build(self) -> ContractResult<Contracts<P>> {
+        // Using custom error Error
         Ok(Contracts {
             compute_pool: match self.compute_pool {
                 Some(pool) => pool,
-                None => return Err(ContractError::Other("ComputePool not initialized".into())),
+                None => return Err(Error::Other("ComputePool not initialized".into())),
             },
             compute_registry: match self.compute_registry {
                 Some(registry) => registry,
                 None => {
-                    return Err(ContractError::Other(
+                    return Err(Error::Other(
                         "ComputeRegistry not initialized".into(),
                     ))
                 } // Custom error handling
             },
             ai_token: match self.ai_token {
                 Some(token) => token,
-                None => return Err(ContractError::Other("AIToken not initialized".into())), // Custom error handling
+                None => return Err(Error::Other("AIToken not initialized".into())), // Custom error handling
             },
             prime_network: match self.prime_network {
                 Some(network) => network,
-                None => return Err(ContractError::Other("PrimeNetwork not initialized".into())), // Custom error handling
+                None => return Err(Error::Other("PrimeNetwork not initialized".into())), // Custom error handling
             },
             synthetic_data_validator: self.synthetic_data_validator,
             domain_registry: self.domain_registry,
@@ -130,43 +136,43 @@ impl<P: alloy_provider::Provider + Clone> ContractBuilder<P> {
         })
     }
 
-    pub fn build_partial(&self) -> Result<Contracts<P>, ContractError> {
+    pub fn build_partial(&self) -> ContractResult<Contracts<P>> {
         Ok(Contracts {
             compute_registry: self
                 .compute_registry
                 .as_ref()
-                .ok_or_else(|| ContractError::Other("ComputeRegistry not initialized".into()))?
+                .ok_or_else(|| Error::Other("ComputeRegistry not initialized".into()))?
                 .clone(),
 
             ai_token: self
                 .ai_token
                 .as_ref()
-                .ok_or_else(|| ContractError::Other("AIToken not initialized".into()))?
+                .ok_or_else(|| Error::Other("AIToken not initialized".into()))?
                 .clone(),
 
             prime_network: self
                 .prime_network
                 .as_ref()
-                .ok_or_else(|| ContractError::Other("PrimeNetwork not initialized".into()))?
+                .ok_or_else(|| Error::Other("PrimeNetwork not initialized".into()))?
                 .clone(),
 
             compute_pool: self
                 .compute_pool
                 .as_ref()
-                .ok_or_else(|| ContractError::Other("ComputePool not initialized".into()))?
+                .ok_or_else(|| Error::Other("ComputePool not initialized".into()))?
                 .clone(),
 
             domain_registry: Some(
                 self.domain_registry
                     .as_ref()
-                    .ok_or_else(|| ContractError::Other("DomainRegistry not initialized".into()))?
+                    .ok_or_else(|| Error::Other("DomainRegistry not initialized".into()))?
                     .clone(),
             ),
 
             stake_manager: Some(
                 self.stake_manager
                     .as_ref()
-                    .ok_or_else(|| ContractError::Other("StakeManager not initialized".into()))?
+                    .ok_or_else(|| Error::Other("StakeManager not initialized".into()))?
                     .clone(),
             ),
             synthetic_data_validator: None,

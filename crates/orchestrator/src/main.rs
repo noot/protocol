@@ -34,7 +34,7 @@ use plugins::webhook::WebhookPlugin;
 use plugins::SchedulerPlugin;
 use plugins::StatusUpdatePlugin;
 use shared::utils::google_cloud::GcsStorageProvider;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use shared::web3::contracts::structs::compute_pool::PoolStatus;
 use shared::web3::wallet::Wallet;
 use std::sync::Arc;
@@ -164,7 +164,7 @@ async fn main() -> Result<()> {
     let store = Arc::new(RedisStore::new(&args.redis_store_url));
     let store_context = Arc::new(StoreContext::new(store.clone()));
 
-    let contracts = ContractBuilder::new(wallet.provider())
+    let contracts = Builder::new(wallet.provider())
         .with_compute_registry()
         .with_ai_token()
         .with_prime_network()

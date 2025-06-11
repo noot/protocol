@@ -1,7 +1,7 @@
 use alloy::primitives::Address;
 use clap::Parser;
 use eyre::Result;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use shared::web3::wallet::Wallet;
 use url::Url;
 
@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
     let wallet = Wallet::new(&args.key, Url::parse(&args.rpc_url)?).unwrap();
 
     // Build all contracts
-    let contracts = ContractBuilder::new(wallet.provider())
+    let contracts = Builder::new(wallet.provider())
         .with_compute_registry()
         .with_ai_token()
         .with_prime_network()

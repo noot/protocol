@@ -154,6 +154,150 @@ pub struct ValidateSignatureMiddleware<S> {
     validator_state: Arc<ValidatorState>,
 }
 
+impl<S, B> ValidateSignatureMiddleware<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S::Future: 'static,
+    B: 'static,
+{
+    async fn read_request_body(req: &mut ServiceRequest) -> Result<BytesMut, Error> {
+        let mut body = BytesMut::new();
+        let mut payload = req.take_payload();
+        let start_time = Instant::now();
+
+        let body_read_future = async {
+            while let Some(chunk) = payload.next().await {
+                let chunk = chunk?;
+
+                if body.len() + chunk.len() > MAX_BODY_SIZE {
+                    return Err(ErrorBadRequest("Request body too large"));
+                }
+
+                if start_time.elapsed() > Duration::from_secs(BODY_TIMEOUT_SECS) {
+                    return Err(ErrorBadRequest("Request body read timeout"));
+                }
+
+                body.extend_from_slice(chunk.as_ref());
+            }
+            Ok::<_, Error>(body)
+        };
+
+        let Ok(body_result) = timeout(Duration::from_secs(BODY_TIMEOUT_SECS), body_read_future).await else { return Err(ErrorBadRequest("Request body read timeout")) };
+        body_result
+    }
+
+    async fn process_payload(req: &ServiceRequest, body: &BytesMut) -> Result<(String, Option<u64>), Error> {
+        let mut payload_string = String::new();
+        let mut timestamp = None;
+
+        if req.method() != actix_web::http::Method::GET {
+            let payload_value: serde_json::Value = serde_json::from_slice(body)
+                .map_err(|e| {
+                    error!("Error parsing payload: {:?}", e);
+                    ErrorBadRequest(e)
+                })?;
+
+            let mut payload_data = payload_value.clone();
+            if let Some(obj) = payload_data.as_object_mut() {
+                let sorted_keys: Vec<String> = obj.keys().cloned().collect();
+                let sorted_obj: serde_json::Map<String, serde_json::Value> = sorted_keys
+                    .into_iter()
+                    .map(|key| (key.clone(), obj.remove(&key).unwrap()))
+                    .collect();
+                *obj = sorted_obj;
+            }
+
+            payload_string = serde_json::to_string(&payload_data)
+                .map_err(|e| {
+                    error!("Error serializing payload: {:?}", e);
+                    ErrorBadRequest(e)
+                })?;
+
+            if let Some(obj) = payload_data.as_object_mut() {
+                timestamp = obj.get("timestamp").and_then(serde_json::Value::as_u64);
+            }
+        }
+
+        if timestamp.is_none() {
+            timestamp = Self::extract_timestamp_from_query(req);
+        }
+
+        Ok((payload_string, timestamp))
+    }
+
+    fn extract_timestamp_from_query(req: &ServiceRequest) -> Option<u64> {
+        req.uri().query().and_then(|query| {
+            query
+                .split('&')
+                .find(|param| param.starts_with("timestamp="))
+                .and_then(|param| param.split('=').nth(1))
+                .and_then(|value| match value.parse::<u64>() {
+                    Ok(ts) => Some(ts),
+                    Err(e) => {
+                        debug!("Failed to parse timestamp from query: {:?}", e);
+                        None
+                    }
+                })
+        })
+    }
+
+    async fn validate_and_process_request(
+        mut req: ServiceRequest,
+        body: BytesMut,
+        address: String,
+        signature: String,
+        msg: String,
+        timestamp: Option<u64>,
+        validator_state: Arc<ValidatorState>,
+        service: Rc<S>,
+    ) -> Result<ServiceResponse<B>, Error> {
+        let signature = signature.trim_start_matches("0x");
+        let Ok(parsed_signature) = Signature::from_str(signature) else { return Err(ErrorBadRequest("Invalid signature format")) };
+
+        let Ok(recovered_address) = parsed_signature.recover_address_from_msg(msg) else {
+                        return Err(ErrorBadRequest("Failed to recover address from message"))
+                    };
+
+        let Ok(expected_address) = Address::from_str(&address) else { return Err(ErrorBadRequest("Invalid address format")) };
+
+        if recovered_address != expected_address {
+            debug!("Recovered address: {:?}", recovered_address);
+            debug!("Expected address: {:?}", expected_address);
+            return Err(ErrorBadRequest("Invalid signature"));
+        }
+
+        if !validator_state
+            .is_address_allowed_async(&recovered_address)
+            .await
+        {
+            warn!(
+                "Request with valid signature but not authorized. Allowed addresses: {:?}",
+                validator_state.get_allowed_addresses()
+            );
+            return Err(ErrorBadRequest("Address not authorized"));
+        }
+
+        if let Some(timestamp) = timestamp {
+            let current_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            if current_time - timestamp > 10 {
+                return Err(ErrorBadRequest("Request expired"));
+            }
+        }
+
+        // Reconstruct request with the original body
+        let stream =
+            futures_util::stream::once(future::ok::<Bytes, PayloadError>(body.freeze()));
+        let boxed_stream: Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>> =
+            Box::pin(stream);
+        req.set_payload(Payload::from(boxed_stream));
+
+        service.call(req).await
+    }
+}
+
 impl<S, B> Service<ServiceRequest> for ValidateSignatureMiddleware<S>
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
@@ -183,148 +327,14 @@ where
             .map(std::string::ToString::to_string);
 
         Box::pin(async move {
-            // Collect the full body with size limit and timeout
-            let mut body = BytesMut::new();
-            let mut payload = req.take_payload();
-            let start_time = Instant::now();
-
-            // Create a timeout for the entire body reading process
-            let body_read_future = async {
-                while let Some(chunk) = payload.next().await {
-                    let chunk = chunk?;
-
-                    // Check if adding this chunk would exceed the size limit
-                    if body.len() + chunk.len() > MAX_BODY_SIZE {
-                        return Err(ErrorBadRequest("Request body too large"));
-                    }
-
-                    // Check if we've exceeded the time limit for reading the body
-                    if start_time.elapsed() > Duration::from_secs(BODY_TIMEOUT_SECS) {
-                        return Err(ErrorBadRequest("Request body read timeout"));
-                    }
-
-                    body.extend_from_slice(chunk.as_ref());
-                }
-                Ok::<_, Error>(body)
-            };
-
-            // Apply timeout to the entire body reading process as a fallback
-            let body_result =
-                match timeout(Duration::from_secs(BODY_TIMEOUT_SECS), body_read_future).await {
-                    Ok(result) => result,
-                    Err(_) => return Err(ErrorBadRequest("Request body read timeout")),
-                };
-
-            // If there was an error reading the body, return it
-            let body = body_result?;
-
-            // Handle GET requests which do not have a payload
-            let mut payload_string = String::new();
-            let mut timestamp = None;
-            if req.method() != actix_web::http::Method::GET {
-                // Parse and sort the payload
-                let payload_value: serde_json::Value = match serde_json::from_slice(&body) {
-                    Ok(val) => val,
-                    Err(e) => {
-                        error!("Error parsing payload: {:?}", e);
-                        return Err(ErrorBadRequest(e));
-                    }
-                };
-                let mut payload_data = payload_value.clone();
-                if let Some(obj) = payload_data.as_object_mut() {
-                    let sorted_keys: Vec<String> = obj.keys().cloned().collect();
-                    let sorted_obj: serde_json::Map<String, serde_json::Value> = sorted_keys
-                        .into_iter()
-                        .map(|key| (key.clone(), obj.remove(&key).unwrap()))
-                        .collect();
-                    *obj = sorted_obj;
-                }
-
-                payload_string = match serde_json::to_string(&payload_data) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        error!("Error serializing payload: {:?}", e);
-                        return Err(ErrorBadRequest(e));
-                    }
-                };
-
-                if let Some(obj) = payload_data.as_object_mut() {
-                    timestamp = obj.get("timestamp").and_then(serde_json::Value::as_u64);
-                }
-            }
-            if timestamp.is_none() {
-                timestamp = req.uri().query().and_then(|query| {
-                    query
-                        .split('&')
-                        .find(|param| param.starts_with("timestamp="))
-                        .and_then(|param| param.split('=').nth(1))
-                        .and_then(|value| match value.parse::<u64>() {
-                            Ok(ts) => Some(ts),
-                            Err(e) => {
-                                debug!("Failed to parse timestamp from query: {:?}", e);
-                                None
-                            }
-                        })
-                });
-            }
-
-            // Combine path and payload
-            let msg: String = format!("{path}{payload_string}");
-            // Validate signature
+            let body = Self::read_request_body(&mut req).await?;
+            let (payload_string, timestamp) = Self::process_payload(&req, &body).await?;
+            let msg = format!("{path}{payload_string}");
+            
             if let (Some(address), Some(signature)) = (x_address, x_signature) {
-                let signature = signature.trim_start_matches("0x");
-                let parsed_signature = match Signature::from_str(signature) {
-                    Ok(sig) => sig,
-                    Err(_) => return Err(ErrorBadRequest("Invalid signature format")),
-                };
-
-                let recovered_address = match parsed_signature.recover_address_from_msg(msg) {
-                    Ok(addr) => addr,
-                    Err(_) => {
-                        return Err(ErrorBadRequest("Failed to recover address from message"))
-                    }
-                };
-
-                let expected_address = match Address::from_str(&address) {
-                    Ok(addr) => addr,
-                    Err(_) => return Err(ErrorBadRequest("Invalid address format")),
-                };
-
-                if recovered_address != expected_address {
-                    debug!("Recovered address: {:?}", recovered_address);
-                    debug!("Expected address: {:?}", expected_address);
-                    return Err(ErrorBadRequest("Invalid signature"));
-                }
-
-                if !validator_state
-                    .is_address_allowed_async(&recovered_address)
-                    .await
-                {
-                    warn!(
-                        "Request with valid signature but not authorized. Allowed addresses: {:?}",
-                        validator_state.get_allowed_addresses()
-                    );
-                    return Err(ErrorBadRequest("Address not authorized"));
-                }
-
-                if let Some(timestamp) = timestamp {
-                    let current_time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs();
-                    if current_time - timestamp > 10 {
-                        return Err(ErrorBadRequest("Request expired"));
-                    }
-                }
-
-                // Reconstruct request with the original body
-                let stream =
-                    futures_util::stream::once(future::ok::<Bytes, PayloadError>(body.freeze()));
-                let boxed_stream: Pin<Box<dyn Stream<Item = Result<Bytes, PayloadError>>>> =
-                    Box::pin(stream);
-                req.set_payload(Payload::from(boxed_stream));
-
-                service.call(req).await
+                Self::validate_and_process_request(
+                    req, body, address, signature, msg, timestamp, validator_state, service
+                ).await
             } else {
                 Err(ErrorBadRequest("Missing signature or address"))
             }

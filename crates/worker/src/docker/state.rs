@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use shared::models::task::{Task, TaskState};
+use shared::models::task::{Task, State as TaskState};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use uuid::Uuid;

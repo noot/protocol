@@ -5,7 +5,7 @@ use reqwest::Client;
 use shared::{
     models::{
         api::ApiResponse,
-        challenge::{calc_matrix, ChallengeRequest, ChallengeResponse, FixedF64},
+        challenge::{calc_matrix, Request as ChallengeRequest, Response as ChallengeResponse, FixedF64},
         node::DiscoveryNode,
     },
     security::request_signer::sign_request,

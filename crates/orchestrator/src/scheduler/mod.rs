@@ -42,7 +42,7 @@ impl Scheduler {
 
 #[cfg(test)]
 mod tests {
-    use shared::models::task::TaskState;
+    use shared::models::task::State as TaskState;
     use uuid::Uuid;
 
     use crate::api::tests::helper::create_test_app_state;

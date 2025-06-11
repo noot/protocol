@@ -14,7 +14,7 @@ use shared::models::api::ApiResponse;
 use shared::models::node::DiscoveryNode;
 use shared::security::request_signer::sign_request;
 use shared::utils::google_cloud::GcsStorageProvider;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use shared::web3::wallet::Wallet;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -213,7 +213,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let mut contract_builder = ContractBuilder::new(validator_wallet.provider())
+    let mut contract_builder = Builder::new(validator_wallet.provider())
         .with_compute_registry()
         .with_ai_token()
         .with_prime_network()
@@ -485,7 +485,7 @@ mod tests {
         web::{self, post},
         HttpResponse, Scope,
     };
-    use shared::models::challenge::{calc_matrix, ChallengeRequest, ChallengeResponse, FixedF64};
+    use shared::models::challenge::{calc_matrix, Request as ChallengeRequest, Response as ChallengeResponse, FixedF64};
 
     pub async fn handle_challenge(challenge: web::Json<ChallengeRequest>) -> HttpResponse {
         let result = calc_matrix(&challenge);

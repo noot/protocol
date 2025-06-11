@@ -2,7 +2,7 @@ use alloy::primitives::{hex, Address};
 
 // TODO: Parse these from env
 #[cfg(not(feature = "testnet"))]
-pub mod contract_addresses {
+pub mod constants {
     use super::*;
     pub const PRIME_NETWORK_ADDRESS: Address =
         Address::new(hex!("0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"));
@@ -19,7 +19,7 @@ pub mod contract_addresses {
 }
 
 #[cfg(feature = "testnet")]
-pub mod contract_addresses {
+pub mod constants {
     use super::{hex, Address};
     pub const PRIME_NETWORK_ADDRESS: Address =
         Address::new(hex!("0x1B831318291C3C3eEd5D2f3377A3Cfe95Fb53c34"));
@@ -35,4 +35,4 @@ pub mod contract_addresses {
         Address::new(hex!("0x552DBd5886D87D8566283547052CCfD795631f6F"));
 }
 
-pub use contract_addresses::*;
+pub use constants::*;

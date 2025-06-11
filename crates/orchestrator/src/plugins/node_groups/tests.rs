@@ -12,7 +12,7 @@ use alloy::primitives::Address;
 use redis::Commands;
 use shared::models::{
     node::{ComputeRequirements, ComputeSpecs, GpuSpecs},
-    task::{SchedulingConfig, Task, TaskState},
+    task::{SchedulingConfig, Task, State as TaskState},
 };
 use std::collections::BTreeSet;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
@@ -679,6 +679,7 @@ async fn test_group_scheduling_without_tasks() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_group_formation_with_max_size() {
     let store = Arc::new(RedisStore::new_test());
     let context_store = store.clone();
@@ -911,6 +912,7 @@ async fn test_node_groups_with_allowed_topologies() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_node_cannot_be_in_multiple_groups() {
     let store = Arc::new(RedisStore::new_test());
     let context_store = store.clone();
@@ -1370,6 +1372,7 @@ async fn test_get_idx_in_group_not_found() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_task_observer() {
     let store = Arc::new(RedisStore::new_test());
     let context_store = store.clone();
@@ -1515,6 +1518,7 @@ async fn test_task_observer() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_building_largest_possible_groups() {
     let store = Arc::new(RedisStore::new_test());
     let context_store = store.clone();

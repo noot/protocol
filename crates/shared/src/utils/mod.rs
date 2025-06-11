@@ -57,11 +57,21 @@ impl MockStorageProvider {
         }
     }
 
+    /// Adds a mapping file entry.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mutex lock fails.
     pub fn add_mapping_file(&self, sha256: &str, file_name: &str) {
         let mut mappings = self.mapping_files.lock().unwrap();
         mappings.insert(sha256.to_string(), file_name.to_string());
     }
 
+    /// Adds a file to the mock storage.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mutex lock fails.
     pub fn add_file(&self, path: &str, content: &str) {
         let mut files = self.files.lock().unwrap();
         files.insert(path.to_string(), content.to_string());

@@ -10,7 +10,7 @@ use hex;
 use log::error;
 use serde_json::json;
 use shared::web3::contracts::structs::compute_pool::PoolStatus;
-use shared::{models::invite::InviteRequest, web3::contracts::helpers::utils::retry_call};
+use shared::{models::invite::Request as InviteRequest, web3::contracts::helpers::utils::retry_call};
 
 pub async fn invite_node(
     invite: web::Json<InviteRequest>,

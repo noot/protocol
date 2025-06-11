@@ -1,7 +1,7 @@
 use alloy::primitives::U256;
 use clap::Parser;
 use eyre::Result;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use shared::web3::wallet::Wallet;
 use std::str::FromStr;
 use url::Url;
@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
         .map_err(|e| eyre::eyre!("Failed to create wallet: {}", e))?;
 
     // Build the PrimeNetwork contract
-    let contracts = ContractBuilder::new(wallet.provider())
+    let contracts = Builder::new(wallet.provider())
         .with_compute_registry()
         .with_ai_token()
         .with_prime_network()

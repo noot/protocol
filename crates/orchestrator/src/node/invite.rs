@@ -11,7 +11,7 @@ use futures::StreamExt;
 use hex;
 use log::{debug, error, info, warn};
 use reqwest::Client;
-use shared::models::invite::InviteRequest;
+use shared::models::invite::Request as InviteRequest;
 use shared::security::request_signer::sign_request;
 use shared::web3::wallet::Wallet;
 use std::sync::Arc;

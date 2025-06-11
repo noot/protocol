@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use log::debug;
 use shared::models::node::GpuSpecs;
 use shared::models::task::Task;
-use shared::models::task::TaskState;
+use shared::models::task::State as TaskState;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -344,7 +344,7 @@ mod tests {
     use super::*;
     use alloy::primitives::Address;
     use shared::models::task::Task;
-    use shared::models::task::TaskState;
+    use shared::models::task::State as TaskState;
     use uuid::Uuid;
 
     #[tokio::test]

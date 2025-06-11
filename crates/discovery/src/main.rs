@@ -10,7 +10,7 @@ use anyhow::Result;
 use clap::Parser;
 use log::error;
 use log::LevelFilter;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
@@ -58,7 +58,7 @@ async fn main() -> Result<()> {
     };
 
     let provider = RootProvider::new_http(endpoint);
-    let contracts = ContractBuilder::new(provider)
+    let contracts = Builder::new(provider)
         .with_compute_registry()
         .with_ai_token()
         .with_prime_network()

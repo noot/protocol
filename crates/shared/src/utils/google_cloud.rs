@@ -19,6 +19,11 @@ pub struct GcsStorageProvider {
 }
 
 impl GcsStorageProvider {
+    /// Creates a new GoogleCloudStorage instance.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if credential decoding or client initialization fails.
     pub async fn new(bucket: &str, credentials_base64: &str) -> Result<Self> {
         let credentials_json = general_purpose::STANDARD
             .decode(credentials_base64)
@@ -62,10 +67,10 @@ impl StorageProvider for GcsStorageProvider {
         let (bucket_name, subpath) = Self::get_bucket_name(&self.bucket);
 
         let object_path = object_path.strip_prefix('/').unwrap_or(object_path);
-        let full_path = if !subpath.is_empty() {
-            format!("{subpath}/{object_path}")
-        } else {
+        let full_path = if subpath.is_empty() {
             object_path.to_string()
+        } else {
+            format!("{subpath}/{object_path}")
         };
 
         match client
@@ -88,10 +93,10 @@ impl StorageProvider for GcsStorageProvider {
         let content = file_name.to_string().into_bytes();
 
         let (bucket_name, subpath) = Self::get_bucket_name(&self.bucket);
-        let object_path = if !subpath.is_empty() {
-            format!("{subpath}/{mapping_path}")
-        } else {
+        let object_path = if subpath.is_empty() {
             mapping_path.clone()
+        } else {
+            format!("{subpath}/{mapping_path}")
         };
 
         let upload_type = UploadType::Simple(Media::new(object_path.clone()));
@@ -116,10 +121,10 @@ impl StorageProvider for GcsStorageProvider {
         let (bucket_name, subpath) = Self::get_bucket_name(&self.bucket);
         let mapping_path = format!("mapping/{sha256}");
 
-        let object_path = if !subpath.is_empty() {
-            format!("{subpath}/{mapping_path}")
-        } else {
+        let object_path = if subpath.is_empty() {
             mapping_path.clone()
+        } else {
+            format!("{subpath}/{mapping_path}")
         };
 
         // Download the mapping file content
@@ -152,10 +157,10 @@ impl StorageProvider for GcsStorageProvider {
 
         // Ensure object_path does not start with a /
         let object_path = object_path.strip_prefix('/').unwrap_or(object_path);
-        let object_path = if !subpath.is_empty() {
-            format!("{subpath}/{object_path}")
-        } else {
+        let object_path = if subpath.is_empty() {
             object_path.to_string()
+        } else {
+            format!("{subpath}/{object_path}")
         };
 
         // Set options for the signed URL

@@ -21,7 +21,7 @@ use clap::{Parser, Subcommand};
 use log::{error, info};
 use shared::models::node::ComputeRequirements;
 use shared::models::node::Node;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use shared::web3::contracts::structs::compute_pool::PoolStatus;
 use shared::web3::wallet::Wallet;
 use std::str::FromStr;
@@ -237,7 +237,7 @@ pub async fn execute_command(
             /*
              Initialize dependencies - services, contracts, operations
             */
-            let contracts = ContractBuilder::new(provider_wallet_instance.provider())
+            let contracts = Builder::new(provider_wallet_instance.provider())
                 .with_compute_registry()
                 .with_ai_token()
                 .with_prime_network()
@@ -744,7 +744,7 @@ pub async fn execute_command(
 
             let provider_wallet = Wallet::new(&private_key, Url::parse(rpc_url).unwrap()).unwrap();
 
-            let contracts = ContractBuilder::new(provider_wallet.provider())
+            let contracts = Builder::new(provider_wallet.provider())
                 .with_compute_registry()
                 .with_ai_token()
                 .with_prime_network()
@@ -843,7 +843,7 @@ pub async fn execute_command(
              Initialize dependencies - services, contracts, operations
             */
 
-            let contracts = ContractBuilder::new(provider_wallet_instance.provider())
+            let contracts = Builder::new(provider_wallet_instance.provider())
                 .with_compute_registry()
                 .with_ai_token()
                 .with_prime_network()

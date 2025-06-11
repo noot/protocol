@@ -332,7 +332,7 @@ mod tests {
     use crate::models::node::OrchestratorNode;
     use crate::ServerMode;
     use alloy::primitives::Address;
-    use shared::models::heartbeat::HeartbeatRequest;
+    use shared::models::heartbeat::Request as HeartbeatRequest;
     use std::str::FromStr;
     use std::time::Duration;
     use tokio::time::sleep;

@@ -8,7 +8,7 @@ use log::error;
 use serde_json::json;
 use shared::models::{
     api::ApiResponse,
-    heartbeat::{HeartbeatRequest, HeartbeatResponse},
+    heartbeat::{Request as HeartbeatRequest, Response as HeartbeatResponse},
 };
 use std::collections::HashSet;
 use std::str::FromStr;
@@ -167,9 +167,9 @@ mod tests {
     use actix_web::test;
     use actix_web::App;
     use serde_json::json;
-    use shared::models::metric::MetricEntry;
-    use shared::models::metric::MetricKey;
-    use shared::models::task::TaskRequest;
+    use shared::models::metric::Entry as MetricEntry;
+    use shared::models::metric::Key as MetricKey;
+    use shared::models::task::Request as TaskRequest;
 
     #[actix_web::test]
     async fn test_heartbeat() {

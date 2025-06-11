@@ -2,7 +2,7 @@ use alloy::primitives::Address;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use shared::models::node::{ComputeSpecs, DiscoveryNode};
-use shared::models::task::TaskState;
+use shared::models::task::State as TaskState;
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -2,7 +2,7 @@ use crate::store::core::RedisStore;
 use alloy::primitives::Address;
 use anyhow::{anyhow, Result};
 use redis::AsyncCommands;
-use shared::models::heartbeat::HeartbeatRequest;
+use shared::models::heartbeat::Request as HeartbeatRequest;
 use std::str::FromStr;
 use std::sync::Arc;
 

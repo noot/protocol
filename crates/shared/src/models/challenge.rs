@@ -54,7 +54,7 @@ impl PartialEq for FixedF64 {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ChallengeRequest {
+pub struct Request {
     pub rows_a: usize,
     pub cols_a: usize,
     pub data_a: Vec<FixedF64>,
@@ -65,14 +65,14 @@ pub struct ChallengeRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct ChallengeResponse {
+pub struct Response {
     pub result: Vec<FixedF64>,
     pub rows: usize,
     pub cols: usize,
 }
 
 #[must_use]
-pub fn calc_matrix(req: &ChallengeRequest) -> ChallengeResponse {
+pub fn calc_matrix(req: &Request) -> Response {
     // convert FixedF64 to f64
     let data_a: Vec<f64> = req.data_a.iter().map(|x| x.0).collect();
     let data_b: Vec<f64> = req.data_b.iter().map(|x| x.0).collect();
@@ -82,7 +82,7 @@ pub fn calc_matrix(req: &ChallengeRequest) -> ChallengeResponse {
 
     let data_c: Vec<FixedF64> = c.iter().map(|x| FixedF64(*x)).collect();
 
-    ChallengeResponse {
+    Response {
         rows: c.nrows(),
         cols: c.ncols(),
         result: data_c,

@@ -5,7 +5,7 @@ use actix_web::{
 };
 use shared::models::api::ApiResponse;
 use shared::models::challenge::calc_matrix;
-use shared::models::challenge::ChallengeRequest;
+use shared::models::challenge::Request as ChallengeRequest;
 
 pub async fn handle_challenge(
     challenge: web::Json<ChallengeRequest>,

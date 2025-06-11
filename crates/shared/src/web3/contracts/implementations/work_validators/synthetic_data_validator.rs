@@ -3,7 +3,7 @@ use alloy::{
     dyn_abi::{DynSolValue, Word},
     primitives::{Address, U256},
 };
-use anyhow::Error;
+use crate::web3::contracts::core::error::{Error, ContractResult};
 use log::debug;
 use serde::Deserialize;
 use serde::Serialize;
@@ -27,7 +27,7 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
         Self { instance }
     }
 
-    pub async fn get_work_keys(&self, pool_id: U256) -> Result<Vec<String>, Error> {
+    pub async fn get_work_keys(&self, pool_id: U256) -> ContractResult<Vec<String>> {
         let result = self
             .instance
             .instance()
@@ -38,11 +38,11 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
         let array_value = result
             .into_iter()
             .next()
-            .ok_or_else(|| Error::msg("No result returned from getWorkKeys"))?;
+            .ok_or_else(|| Error::InvalidResponse("No result returned from getWorkKeys".to_string()))?;
 
         let array = array_value
             .as_array()
-            .ok_or_else(|| Error::msg("Result is not an array"))?;
+            .ok_or_else(|| Error::InvalidResponse("Result is not an array".to_string()))?;
 
         // Map each value to a hex string
         let work_keys = array
@@ -50,11 +50,11 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
             .map(|value| {
                 let bytes = value
                     .as_fixed_bytes()
-                    .ok_or_else(|| Error::msg("Value is not fixed bytes"))?;
+                    .ok_or_else(|| Error::DecodingError("Value is not fixed bytes".to_string()))?;
 
                 // Ensure we have exactly 32 bytes
                 if bytes.0.len() != 32 {
-                    return Err(Error::msg(format!(
+                    return Err(Error::DecodingError(format!(
                         "Expected 32 bytes, got {}",
                         bytes.0.len()
                     )));
@@ -63,17 +63,18 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
                 // Convert bytes to string
                 Ok(hex::encode(bytes.0))
             })
-            .collect::<Result<Vec<String>, Error>>()?;
+            .collect::<ContractResult<Vec<String>>>()?;
 
         Ok(work_keys)
     }
 
-    pub async fn get_work_info(&self, pool_id: U256, work_key: &str) -> Result<WorkInfo, Error> {
+    pub async fn get_work_info(&self, pool_id: U256, work_key: &str) -> ContractResult<WorkInfo> {
         // Convert work_key from hex string to bytes32
         debug!("Processing work key: {}", work_key);
-        let work_key_bytes = hex::decode(work_key)?;
+        let work_key_bytes = hex::decode(work_key)
+            .map_err(|e| Error::DecodingError(format!("Failed to decode hex work key: {}", e)))?;
         if work_key_bytes.len() != 32 {
-            return Err(Error::msg("Work key must be 32 bytes"));
+            return Err(Error::DecodingError("Work key must be 32 bytes".to_string()));
         }
         debug!("Decoded work key bytes: {:?}", work_key_bytes);
 
@@ -90,34 +91,34 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
         let tuple = result
             .into_iter()
             .next()
-            .ok_or_else(|| Error::msg("No result returned from getWorkInfo"))?;
+            .ok_or_else(|| Error::InvalidResponse("No result returned from getWorkInfo".to_string()))?;
 
         let tuple_array = tuple
             .as_tuple()
-            .ok_or_else(|| Error::msg("Result is not a tuple"))?;
+            .ok_or_else(|| Error::InvalidResponse("Result is not a tuple".to_string()))?;
         if tuple_array.len() != 4 {
-            return Err(Error::msg("Invalid tuple length"));
+            return Err(Error::InvalidResponse("Invalid tuple length".to_string()));
         }
 
         let provider = tuple_array[0]
             .as_address()
-            .ok_or_else(|| Error::msg("Provider is not an address"))?;
+            .ok_or_else(|| Error::DecodingError("Provider is not an address".to_string()))?;
 
         let node_id = tuple_array[1]
             .as_address()
-            .ok_or_else(|| Error::msg("Node ID is not an address"))?;
+            .ok_or_else(|| Error::DecodingError("Node ID is not an address".to_string()))?;
 
         let timestamp = u64::try_from(
             tuple_array[2]
                 .as_uint()
-                .ok_or_else(|| Error::msg("Timestamp is not a uint"))?
+                .ok_or_else(|| Error::DecodingError("Timestamp is not a uint".to_string()))?
                 .0,
         )
-        .map_err(|_| Error::msg("Timestamp conversion failed"))?;
+        .map_err(|_| Error::DecodingError("Timestamp conversion failed".to_string()))?;
 
         let work_units = tuple_array[3]
             .as_uint()
-            .ok_or_else(|| Error::msg("Work units is not a uint"))?
+            .ok_or_else(|| Error::DecodingError("Work units is not a uint".to_string()))?
             .0;
 
         Ok(WorkInfo {
@@ -132,7 +133,7 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
         &self,
         pool_id: U256,
         timestamp: U256,
-    ) -> Result<Vec<String>, Error> {
+    ) -> ContractResult<Vec<String>> {
         let result = self
             .instance
             .instance()
@@ -143,22 +144,22 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
         let array_value = result
             .into_iter()
             .next()
-            .ok_or_else(|| Error::msg("No result returned from getWorkSince"))?;
+            .ok_or_else(|| Error::InvalidResponse("No result returned from getWorkSince".to_string()))?;
 
         let array = array_value
             .as_array()
-            .ok_or_else(|| Error::msg("Result is not an array"))?;
+            .ok_or_else(|| Error::InvalidResponse("Result is not an array".to_string()))?;
 
         let work_keys = array
             .iter()
             .map(|value| {
                 let bytes = value
                     .as_fixed_bytes()
-                    .ok_or_else(|| Error::msg("Value is not fixed bytes"))?;
+                    .ok_or_else(|| Error::DecodingError("Value is not fixed bytes".to_string()))?;
 
                 // Ensure we have exactly 32 bytes
                 if bytes.0.len() != 32 {
-                    return Err(Error::msg(format!(
+                    return Err(Error::DecodingError(format!(
                         "Expected 32 bytes, got {}",
                         bytes.0.len()
                     )));
@@ -167,7 +168,7 @@ impl<P: alloy_provider::Provider> SyntheticDataWorkValidator<P> {
                 // Convert bytes to string
                 Ok(hex::encode(bytes.0))
             })
-            .collect::<Result<Vec<String>, Error>>()?;
+            .collect::<ContractResult<Vec<String>>>()?;
 
         Ok(work_keys)
     }

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub enum TaskState {
+pub enum State {
     PENDING,
     PULLING,
     RUNNING,
@@ -18,33 +18,32 @@ pub enum TaskState {
     UNKNOWN,
 }
 
-impl From<&str> for TaskState {
+impl From<&str> for State {
     fn from(s: &str) -> Self {
         match s {
-            "PENDING" => TaskState::PENDING,
-            "PULLING" => TaskState::PULLING,
-            "RUNNING" => TaskState::RUNNING,
-            "COMPLETED" => TaskState::COMPLETED,
-            "FAILED" => TaskState::FAILED,
-            "PAUSED" => TaskState::PAUSED,
-            "RESTARTING" => TaskState::RESTARTING,
-            "UNKNOWN" => TaskState::UNKNOWN,
-            _ => TaskState::UNKNOWN, // Default case
+            "PENDING" => State::PENDING,
+            "PULLING" => State::PULLING,
+            "RUNNING" => State::RUNNING,
+            "COMPLETED" => State::COMPLETED,
+            "FAILED" => State::FAILED,
+            "PAUSED" => State::PAUSED,
+            "RESTARTING" => State::RESTARTING,
+            _ => State::UNKNOWN, // Default case
         }
     }
 }
 
-impl std::fmt::Display for TaskState {
+impl std::fmt::Display for State {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let state_str = match self {
-            TaskState::PENDING => "PENDING",
-            TaskState::PULLING => "PULLING",
-            TaskState::RUNNING => "RUNNING",
-            TaskState::COMPLETED => "COMPLETED",
-            TaskState::FAILED => "FAILED",
-            TaskState::PAUSED => "PAUSED",
-            TaskState::RESTARTING => "RESTARTING",
-            TaskState::UNKNOWN => "UNKNOWN",
+            State::PENDING => "PENDING",
+            State::PULLING => "PULLING",
+            State::RUNNING => "RUNNING",
+            State::COMPLETED => "COMPLETED",
+            State::FAILED => "FAILED",
+            State::PAUSED => "PAUSED",
+            State::RESTARTING => "RESTARTING",
+            State::UNKNOWN => "UNKNOWN",
         };
         write!(f, "{state_str}")
     }
@@ -59,7 +58,7 @@ pub struct SchedulingConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct TaskRequest {
+pub struct Request {
     pub image: String,
     pub name: String,
     pub env_vars: Option<std::collections::HashMap<String, String>>,
@@ -78,7 +77,7 @@ pub struct Task {
     pub env_vars: Option<std::collections::HashMap<String, String>>,
     pub command: Option<String>,
     pub args: Option<Vec<String>>,
-    pub state: TaskState,
+    pub state: State,
     #[serde(default)]
     pub created_at: i64,
     #[serde(default)]
@@ -98,7 +97,7 @@ impl Default for Task {
             env_vars: None,
             command: None,
             args: None,
-            state: TaskState::default(),
+            state: State::default(),
             created_at: 0,
             updated_at: None,
             scheduling_config: None,
@@ -146,10 +145,10 @@ impl StorageConfig {
         Ok(())
     }
 }
-impl TryFrom<TaskRequest> for Task {
+impl TryFrom<Request> for Task {
     type Error = String;
 
-    fn try_from(request: TaskRequest) -> Result<Self, Self::Error> {
+    fn try_from(request: Request) -> Result<Self, Self::Error> {
         if let Some(storage_config) = &request.storage_config {
             storage_config.validate()?;
         }
@@ -161,7 +160,7 @@ impl TryFrom<TaskRequest> for Task {
             command: request.command,
             args: request.args,
             env_vars: request.env_vars,
-            state: TaskState::PENDING,
+            state: State::PENDING,
             created_at: Utc::now().timestamp_millis(),
             updated_at: None,
             scheduling_config: request.scheduling_config,

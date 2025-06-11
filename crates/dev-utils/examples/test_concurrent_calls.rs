@@ -6,7 +6,7 @@ use alloy::primitives::U256;
 use alloy::providers::Provider;
 use clap::Parser;
 use eyre::Result;
-use shared::web3::contracts::core::builder::ContractBuilder;
+use shared::web3::contracts::core::builder::Builder;
 use shared::web3::contracts::helpers::utils::retry_call;
 use shared::web3::wallet::Wallet;
 use std::str::FromStr;
@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
 
     // Unfortunately have to build all contracts atm
     let contracts = Arc::new(
-        ContractBuilder::new(wallet.provider())
+        Builder::new(wallet.provider())
             .with_compute_registry()
             .with_ai_token()
             .with_prime_network()

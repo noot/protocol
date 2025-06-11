@@ -115,7 +115,7 @@ impl<'a> HardwareValidator<'a> {
 mod tests {
     use super::*;
     use shared::models::node::Node;
-    use shared::web3::contracts::core::builder::ContractBuilder;
+    use shared::web3::contracts::core::builder::Builder;
     use shared::web3::wallet::Wallet;
     use url::Url;
 
@@ -126,7 +126,7 @@ mod tests {
 
         let coordinator_wallet = Arc::new(Wallet::new(coordinator_key, rpc_url).unwrap());
 
-        let contracts = ContractBuilder::new(coordinator_wallet.provider())
+        let contracts = Builder::new(coordinator_wallet.provider())
             .with_compute_registry()
             .with_ai_token()
             .with_prime_network()

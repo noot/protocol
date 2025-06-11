@@ -4,7 +4,7 @@ use crate::web3::wallet::WalletProvider;
 use alloy::dyn_abi::DynSolValue;
 use alloy::primitives::{keccak256, Address, FixedBytes, U256};
 use alloy_provider::Provider as _;
-use anyhow::Error;
+use crate::web3::contracts::core::error::{Error, ContractResult};
 
 #[derive(Clone)]
 pub struct PrimeNetworkContract<P: alloy_provider::Provider> {
@@ -17,7 +17,7 @@ impl<P: alloy_provider::Provider> PrimeNetworkContract<P> {
         Self { instance }
     }
 
-    pub async fn get_validator_role(&self) -> Result<Vec<Address>, Error> {
+    pub async fn get_validator_role(&self) -> ContractResult<Vec<Address>> {
         let hash = keccak256(b"VALIDATOR_ROLE");
         let value = DynSolValue::FixedBytes(hash, 32);
         let members = self
@@ -34,11 +34,11 @@ impl<P: alloy_provider::Provider> PrimeNetworkContract<P> {
                     if let Some(addr) = address.as_address() {
                         members_vec.push(addr);
                     } else {
-                        return Err(Error::msg("Failed to convert member to address"));
+                        return Err(Error::DecodingError("Failed to convert member to address".to_string()));
                     }
                 }
             } else {
-                return Err(Error::msg("Member is not an array"));
+                return Err(Error::InvalidResponse("Member is not an array".to_string()));
             }
         }
 

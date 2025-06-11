@@ -1,5 +1,5 @@
 use anyhow::Result;
-use shared::models::metric::{MetricEntry, MetricKey};
+use shared::models::metric::{Entry as MetricEntry, Key as MetricKey};
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 

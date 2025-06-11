@@ -7,7 +7,7 @@ use crate::store::core::StoreContext;
 #[cfg(test)]
 use actix_web::web::Data;
 #[cfg(test)]
-use shared::web3::contracts::core::builder::{ContractBuilder, Contracts};
+use shared::web3::contracts::core::builder::{Builder, Contracts};
 #[cfg(test)]
 use shared::web3::wallet::Wallet;
 #[cfg(test)]
@@ -143,7 +143,7 @@ pub fn setup_contract() -> Contracts<WalletProvider> {
     let rpc_url: Url = Url::parse("http://localhost:8545").unwrap();
     let wallet = Wallet::new(coordinator_key, rpc_url).unwrap();
 
-    ContractBuilder::new(wallet.provider)
+    Builder::new(wallet.provider)
         .with_compute_registry()
         .with_ai_token()
         .with_prime_network()
